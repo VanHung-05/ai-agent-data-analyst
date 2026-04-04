@@ -37,7 +37,7 @@ Cập nhật lần cuối: 04/04/2026
 ## 3. Kiến trúc Kỹ thuật (Technical Highlights)
 
 ### 3.1 Cấu hình Model & Môi trường
-- **Mô hình chính:** `gemini-2.0-flash` (Ưu điểm: Tốc độ cực nhanh, hỗ trợ context window lớn, hiểu schema phức tạp tốt).
+- **Mô hình chính:** `gemini-2.5-flash` (Ưu điểm: Tốc độ cực nhanh, hỗ trợ context window lớn, hiểu schema phức tạp tốt).
 - **Thư viện lõi:** `google-genai` (SDK mới nhất), `langchain` (0.3.0), `databricks-sql-connector`.
 
 ### 3.2 Cơ chế Self-Correction (Tự sửa lỗi)
