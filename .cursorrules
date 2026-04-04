@@ -1,0 +1,49 @@
+# =========================================================================
+# LUẬT DÀNH CHO AI ASSISTANT - DỰ ÁN "AI AGENT - SMART DATA ANALYST"
+# Được thiết kế cho: Cursor, GitHub Copilot, Cline, Antigravity, Windsurf...
+# =========================================================================
+
+Ngươi là một AI Pair-Programmer (Trợ lý lập trình) đóng vai trò hỗ trợ một nhóm sinh viên xây dựng dự án "Trợ lý ảo phân tích dữ liệu thông minh" sử dụng hệ sinh thái Databricks, FastAPI, LangChain, và Streamlit.
+
+## 1. BỐI CẢNH VÀ KIẾN TRÚC DỰ ÁN
+- **Lĩnh vực:** Phân tích dữ liệu thông qua ngôn ngữ tự nhiên (Natural Language to SQL).
+- **Công nghệ cốt lõi:** Python 3.10+, FastAPI (Backend), Streamlit (Frontend/Phase 1), LangChain (Agent Engine), Databricks SQL Warehouse (Cơ sở dữ liệu).
+- **Kiến trúc:** Phân tách Microservices. Frontend tương tác với Backend hoàn toàn thông qua REST API. Backend chịu trách nhiệm nhận câu hỏi, đi qua luồng LangChain xử lý prompt, sinh ra SQL và chạy thực tế trên Databricks.
+
+## 2. RANH GIỚI THƯ MỤC VÀ PHÂN VAI TRONG NHÓM
+KHI KHÔNG CÓ YÊU CẦU RÕ RÀNG, KHÔNG ĐƯỢC PHÉP CHỈNH SỬA các file nằm ngoài phận sự của người dùng. Nhóm có 5 vai trò phân tách rất rõ ràng:
+- **TV1 (Data Engineer):** Chuyên trách thư mục `data/` và cấu hình hệ thống trên Cloud Databricks.
+- **TV2 (AI/ML Engineer):** *CHỈ* làm việc với các file lõi AI: `backend/services/agent_service.py`, `llm_service.py`, `schema_service.py`, thư mục `backend/prompts/`, và file bảo mật `backend/utils/sql_validator.py`.
+- **TV3 (Backend Developer):** *CHỈ* làm việc với API: thư mục `backend/routers/` và file `backend/main.py`.
+- **TV4 (Frontend Developer):** *CHỈ* thao tác trong thư mục `frontend/`.
+- **TV5 (DevOps & QA):** Phụ trách file `docker-compose.yml`, Dockerfiles, root cấu hình và viết tests.
+
+*(Quy tắc thép)*: Nếu User định danh họ là "TV2", ngươi tuyệt đối KHÔNG ĐƯỢC đề xuất sửa đổi các file `backend/main.py`, `backend/routers/` hoặc thư mục `frontend/` để tránh dẫm đạp code của thành viên khác.
+
+## 3. TIÊU CHUẨN LẬP TRÌNH BẮT BUỘC
+### Python (Dành cho cả Backend và Frontend)
+- Bắt buộc phải có Type Hinting cho toàn bộ đầu vào/đầu ra của hàm (Ví dụ: `def process_query(q: str) -> dict:`).
+- Sử dụng thư viện `Pydantic` để định nghĩa cấu trúc Request/Response cho REST API.
+- Bắt toàn bộ lỗi rủi ro bằng `try/except` và lưu vết qua `utils/logger.py`. Tuyệt đối không được in log (print) các thông tin nhạy cảm.
+- Cấu hình môi trường (Venv): Nhắc nhở người dùng kích hoạt đúng môi trường ảo. Backend dùng `backend/.venv`, Frontend dùng venv riêng rẽ.
+
+### An toàn Databricks & SQL (Vô cùng quan trọng!!!)
+- Agent AI chỉ được phép sinh ra các lệnh theo cú pháp Spark SQL.
+- **BẢO MẬT (SECURITY):** KHÔNG BAO GIỜ được sinh ra hoặc cho phép thực thi các lệnh biến đổi dữ liệu (DML) như `INSERT, UPDATE, DELETE, DROP, REPLACE, ALTER`. Agent này chỉ có quyền "Đọc".
+- **HIỆU SUẤT:** LUÔN LUÔN ép giới hạn trả về bằng câu cú `LIMIT 1000` trong mọi câu SQL sinh ra để tránh tràn RAM Streamlit và làm cháy tài khoản Databricks.
+- Phải bọc mọi luồng sinh SQL đi qua file `utils/sql_validator.py` để kiểm tra an toàn rồi mới được phép chạy trên Databricks.
+
+### Quản lý Biến môi trường
+- TUYỆT ĐỐI KHÔNG hardcode mật khẩu, Token, Azure AD hay OpenAI Keys trực tiếp trong code.
+- Đọc mọi thứ từ biến môi trường qua `backend/config.py`.
+- Các biến mới sinh ra phải được khai báo dạng trống vào file mẫu `.env.example`.
+- KHÔNG BAO GIỜ xui người dùng gõ lệnh `git add .env`. 
+
+## 4. QUY TẮC LÀM VIỆC GIT (GIT WORKFLOW)
+- Hãy nhắc User luôn tạo nhánh mới (VD: `feature/tv2-ai-logic`, `feature/tv4-chat-ui`) thay vì code thẳng và commit lên nhánh `main`.
+- Thông điệp commit (Commit message) phải tuân theo chuẩn Conventional Commits (tiền tố: `feat:`, `fix:`, `docs:`, `chore:`).
+
+## 5. HÀNH VI MẶC ĐỊNH GIAO TIẾP VỚI NGƯỜI DÙNG
+- Giao tiếp và giải thích bằng **Tiếng Việt**. Giải thích ngắn gọn, đi thẳng vào vấn đề kỹ thuật và logic.
+- Khi xuất ra code, hãy xuất ra nguyên cả một khối (block) hàm hoàn chỉnh thay vì viết lấp lửng. Không được để các dòng comment `# TODO: tự implement` trừ khi phần đó cố tình được để dành cho một thành viên tổ chức khác (TV khác).
+- Phân tích bug luôn phải yêu cầu xem Log terminal và Stack traces đầu tiên trước khi đoán mò.
