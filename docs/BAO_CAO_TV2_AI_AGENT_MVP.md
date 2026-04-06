@@ -5,7 +5,7 @@
 - **Môn học:** Kiến trúc hướng dịch vụ và Điện toán đám mây
 - **Đề tài:** AI Agent - Smart Data Analyst on Databricks
 - **Vai trò báo cáo:** TV2 (AI/ML Engineer)
-- **Người thực hiện:** Võ Văn Hùng
+- **Người thực hiện:** Nguyễn Văn Hùng
 - **Thời gian thực hiện:** 30/03/2026 - 06/04/2026
 - **Tài liệu đối chiếu chính:**
   - `PROJECT_PLAN_NHIEM_VU.md`
