@@ -30,7 +30,7 @@ class QueryResponse(BaseModel):
 # ====== ENDPOINTS ======
 
 @router.post("/chat/query", response_model=QueryResponse)
-def chat_query(request: QueryRequest):
+async def chat_query(request: QueryRequest):
     """
     Nhận câu hỏi ngôn ngữ tự nhiên, trả về SQL + kết quả
 
@@ -38,7 +38,7 @@ def chat_query(request: QueryRequest):
     """
     try:
         from services.agent_service import process_question
-        result = process_question(request.question)
+        result = await process_question(request.question)
         return QueryResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

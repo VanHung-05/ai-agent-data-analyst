@@ -107,31 +107,25 @@ def _load_system_prompt() -> str:
         return "You are a helpful SQL assistant. Generate valid Spark SQL queries."
 
 
-def process_question(question: str) -> dict[str, Any]:
+async def process_question(question: str, max_retries: int = 3) -> dict[str, Any]:
     """
-    🌟 HÀM CHÍNH — Xử lý câu hỏi từ người dùng
+    🌟 HÀM CHÍNH (BẤT ĐỒNG BỘ) — Xử lý câu hỏi từ người dùng với Retry Loop linh hoạt
 
     Pipeline:
-      1. Nhận câu hỏi ngôn ngữ tự nhiên
-      2. Validate input
-      3. AI sinh SQL dựa trên schema + prompt
-      4. Validate SQL (chặn DML)
-      5. Thực thi SQL trên Databricks
-      6. Trả kết quả (hoặc retry nếu lỗi)
-
-    Args:
-        question: Câu hỏi bằng ngôn ngữ tự nhiên (VD: "Tổng doanh thu tháng 1?")
-
-    Returns:
-        dict: {
-            "question": str,
-            "generated_sql": str,
-            "data": list[dict],
-            "row_count": int,
-            "visualization_recommendation": dict,
-            "error": str | None
-        }
+      1. Nhận câu hỏi
+      2. Chạy Async Executor để sinh SQL
+      3. Validate SQL an toàn
+      4. Thực thi Databricks lấy data
+      5. Nếu lỗi → Retry Loop (tối đa max_retries lần)
     """
+    import asyncio
+    import concurrent.futures
+
+    async def run_in_executor(func, *args, **kwargs):
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return await loop.run_in_executor(pool, lambda: func(*args, **kwargs))
+
     result = {
         "question": question,
         "generated_sql": None,
@@ -142,55 +136,76 @@ def process_question(question: str) -> dict[str, Any]:
     }
 
     try:
-        # --- Step 1: Khởi tạo Database & LLM ---
-        db = get_database()
-        llm = get_llm()
+        db = await run_in_executor(get_database)
+        llm = await run_in_executor(get_llm)
+    except Exception as e:
+        result["error"] = f"🚫 Lỗi khởi tạo kết nối: {str(e)}"
+        return result
 
-        # --- Step 2: Tạo chain sinh SQL ---
-        # LangChain tự động nhồi schema vào prompt, ép limit mặc định = 5
-        # Ta cần truyền k=100 để nó theo lời người dùng tới tối đa 100 dòng
-        write_query = create_sql_query_chain(llm, db, k=100)
+    # Load System Prompt từ file
+    system_prompt_content = await run_in_executor(_load_system_prompt)
 
-        # --- Step 3: AI sinh SQL ---
-        generated_sql = write_query.invoke({"question": question})
+    retries = 0
+    last_error_str = ""
+    
+    while retries < max_retries:
+        try:
+            # Tạo prompt kết hợp: System Prompt + Câu hỏi của người dùng
+            if retries == 0:
+                # Lần đầu: Nhúng nội dung system_prompt.txt vào câu hỏi
+                prompt_input = {
+                    "question": f"{system_prompt_content}\n\nUser Question: {question}"
+                }
+            else:
+                # Các lần sau (Self-Correction): Nhúng thêm thông tin lỗi trước đó
+                prompt_input = {
+                    "question": (
+                        f"{system_prompt_content}\n\n"
+                        f"Câu hỏi gốc của người dùng: {question}\n"
+                        f"❌ LỖI PHÁT SINH TRƯỚC ĐÓ: {last_error_str}\n"
+                        f"HÀNH ĐỘNG CẦN LÀM: Hãy phân tích kỹ lỗi trên và viết lại câu lệnh SQL Spark chính xác hơn. "
+                        f"Chỉ xuất SQL nguyên bản, không giải thích."
+                    )
+                }
 
-        # Làm sạch SQL output (loại bỏ markdown formatting nếu có)
-        generated_sql = _clean_sql_output(generated_sql)
+            # Sinh SQL: Chain này sẽ tự động nhồi schema từ `db` vào prompt phía sau
+            write_query = await run_in_executor(create_sql_query_chain, llm, db, k=100)
+            raw_sql = await run_in_executor(write_query.invoke, prompt_input)
+            generated_sql = await run_in_executor(_clean_sql_output, raw_sql)
 
-        # --- Step 4: Validate SQL (bảo mật) ---
-        is_valid, error_msg = validate_sql(generated_sql)
-        if not is_valid:
+            # Validate an toàn
+            is_valid, error_msg = await run_in_executor(validate_sql, generated_sql)
+            if not is_valid:
+                raise ValueError(f"Câu lệnh DML bị chặn: {error_msg}")
+
+            generated_sql = await run_in_executor(sanitize_sql, generated_sql)
             result["generated_sql"] = generated_sql
-            result["error"] = f"🚫 SQL không an toàn: {error_msg}"
+
+            # Thực thi
+            execute_query = QuerySQLDataBaseTool(db=db)
+            raw_result = await run_in_executor(execute_query.invoke, generated_sql)
+
+            # Parse dữ liệu
+            result["data"] = await run_in_executor(_parse_query_result, raw_result)
+            result["row_count"] = len(result["data"])
+            result["visualization_recommendation"] = await run_in_executor(
+                _recommend_chart, question, generated_sql, result["data"]
+            )
+            result["error"] = None
+            
+            if retries > 0:
+                print(f"✅ Retry lần {retries} thành công!")
+            
             return result
 
-        # --- Step 4.5: Tự động thêm LIMIT nếu thiếu ---
-        generated_sql = sanitize_sql(generated_sql)
-        result["generated_sql"] = generated_sql
-
-        # --- Step 5: Thực thi SQL trên Databricks ---
-        execute_query = QuerySQLDataBaseTool(db=db)
-        raw_result = execute_query.invoke(generated_sql)
-
-        # --- Step 6: Parse kết quả ---
-        result["data"] = _parse_query_result(raw_result)
-        result["row_count"] = len(result["data"])
-
-        # --- Step 7: Gợi ý loại biểu đồ ---
-        result["visualization_recommendation"] = _recommend_chart(
-            question, result["data"]
-        )
-
-    except Exception as e:
-        error_str = str(e)
-        print(f"❌ Lỗi lần 1: {error_str}")
-
-        # --- FALLBACK: Self-correction (Retry tối đa 1 lần) ---
-        try:
-            result = _retry_with_correction(question, error_str, db, llm, result)
-        except Exception as retry_err:
-            print(f"❌ Retry cũng thất bại: {retry_err}")
-            result["error"] = f"Lỗi xử lý: {error_str}"
+        except Exception as e:
+            retries += 1
+            last_error_str = str(e)
+            print(f"❌ Lỗi (thử lại {retries}/{max_retries}): {last_error_str}")
+            if retries == max_retries:
+                result["error"] = f"Thất bại sau {max_retries} lần thử: {last_error_str}"
+                return result
+            await asyncio.sleep(1) # Nghỉ 1 giây trước khi retry
 
     return result
 
@@ -231,44 +246,7 @@ def _clean_sql_output(sql: str) -> str:
     return sql.strip().rstrip(';')
 
 
-def _retry_with_correction(
-    question: str, error_msg: str, db, llm, result: dict
-) -> dict:
-    """
-    Self-correction: Gửi lỗi SQL lại cho LLM để tự sửa (tối đa 1 lần retry)
-    Tham khảo kỹ thuật từ Vi-RAG framework: nếu lần đầu thất bại,
-    cung cấp thêm ngữ cảnh lỗi để LLM "học" và sửa.
-    """
-    print("🔄 Đang thử Self-correction...")
 
-    correction_prompt = (
-        f"Câu hỏi gốc: {question}\n"
-        f"SQL trước đó bị lỗi với thông báo: {error_msg}\n"
-        f"Hãy phân tích lỗi và viết lại câu SQL đúng. "
-        f"Chỉ trả về SQL thuần, không giải thích."
-    )
-
-    write_query = create_sql_query_chain(llm, db)
-    new_sql = write_query.invoke({"question": correction_prompt})
-    new_sql = _clean_sql_output(new_sql)
-
-    is_valid, err = validate_sql(new_sql)
-    if not is_valid:
-        result["error"] = f"Retry cũng không an toàn: {err}"
-        return result
-
-    new_sql = sanitize_sql(new_sql)
-    result["generated_sql"] = new_sql
-
-    execute_query = QuerySQLDataBaseTool(db=db)
-    raw_result = execute_query.invoke(new_sql)
-
-    result["data"] = _parse_query_result(raw_result)
-    result["row_count"] = len(result["data"])
-    result["visualization_recommendation"] = _recommend_chart(question, result["data"])
-    result["error"] = None
-    print("✅ Self-correction thành công!")
-    return result
 
 
 def _parse_query_result(raw_result: str) -> list[dict]:
@@ -327,42 +305,60 @@ def _parse_query_result(raw_result: str) -> list[dict]:
     return [{"result": raw}]
 
 
-def _recommend_chart(question: str, data: list[dict]) -> dict:
+def _recommend_chart(question: str, sql: str, data: list[dict]) -> dict:
     """
-    Gợi ý loại biểu đồ phù hợp dựa trên câu hỏi & dữ liệu
+    Gợi ý loại biểu đồ phù hợp dựa trên:
+    1. Ý định của câu hỏi (question)
+    2. Cấu trúc SQL (sql)
+    3. Dữ liệu thực tế trả về (data)
 
-    💡 TV2 NOTE (Phase 2):
-      - Phân tích keyword trong câu hỏi để gợi ý chart
-      - Có thể dùng LLM để recommend chart type thông minh hơn
-
-    Returns:
-        dict: {"chart_type": "bar"|"line"|"pie"|"table", ...}
+    💡 TV2 NOTE:
+      - 1x1 data (COUNT, SUM) -> 'metric'
+      - Time-based data -> 'line'
+      - Distribution/Ratio -> 'pie'
+      - Comparison -> 'bar'
     """
+    if not data:
+        return {"chart_type": "table", "reason": "No data"}
+
+    columns = list(data[0].keys())
+    row_count = len(data)
     question_lower = question.lower()
+    sql_lower = sql.lower()
 
-    # Rule-based recommendation (Phase 1 — đơn giản)
-    if any(kw in question_lower for kw in ["theo tháng", "theo ngày", "trend", "xu hướng", "over time"]):
-        return {"chart_type": "line", "reason": "Dữ liệu theo thời gian"}
+    # 🚀 CASE 1: Hiển thị dạng số đơn lẻ (Metric Card)
+    # Ví dụ: "Bao nhiêu đơn hàng?" -> Kết quả 1 dòng 1 cột
+    if row_count == 1 and len(columns) == 1:
+        return {
+            "chart_type": "metric",
+            "label": columns[0],
+            "value": data[0][columns[0]],
+            "reason": "Single value result"
+        }
 
-    if any(kw in question_lower for kw in ["tỷ lệ", "phần trăm", "proportion", "ratio", "percentage"]):
-        return {"chart_type": "pie", "reason": "Dữ liệu tỷ lệ"}
+    # CASE 2: Biểu đồ đường (Line) - Theo thời gian
+    if any(kw in question_lower for kw in ["tháng", "ngày", "trend", "xu hướng", "over time"]) or \
+       any(kw in sql_lower for kw in ["date", "timestamp", "year", "month"]):
+        if len(columns) >= 2:
+            return {"chart_type": "line", "x": columns[0], "y": columns[1], "reason": "Time series detected"}
 
-    if any(kw in question_lower for kw in ["so sánh", "compare", "top", "xếp hạng", "ranking", "theo loại"]):
-        return {"chart_type": "bar", "reason": "Dữ liệu so sánh"}
+    # CASE 3: Biểu đồ tròn (Pie) - Tỷ lệ
+    if any(kw in question_lower for kw in ["tỷ lệ", "phần trăm", "ratio", "percentage"]):
+        if len(columns) >= 2:
+            return {"chart_type": "pie", "label": columns[0], "value": columns[1], "reason": "Proportions detected"}
 
-    if any(kw in question_lower for kw in ["tổng", "total", "bao nhiêu", "count", "sum"]):
-        # Nếu chỉ 1 giá trị → hiện bảng, nếu nhiều → bar chart
-        if len(data) <= 1:
-            return {"chart_type": "table", "reason": "Giá trị đơn lẻ"}
-        return {"chart_type": "bar", "reason": "Tổng hợp nhiều nhóm"}
+    # CASE 4: Biểu đồ cột (Bar) - So sánh (Mặc định cho Group By)
+    if any(kw in question_lower for kw in ["top", "so sánh", "ranking"]) or "group by" in sql_lower:
+        if len(columns) >= 2:
+            return {"chart_type": "bar", "x": columns[0], "y": columns[1], "reason": "Comparison detected"}
 
-    return {"chart_type": "table", "reason": "Mặc định hiển thị bảng"}
+    return {"chart_type": "table", "reason": "Default list view"}
 
 
 # ====== QUICK TEST ======
-if __name__ == "__main__":
+async def interactive_test():
     print("=" * 60)
-    print("🧠 AI Agent — Smart Data Analyst | INTERACTIVE MODE")
+    print("🧠 AI Agent — Smart Data Analyst | INTERACTIVE MODE (ASYNC)")
     print("=" * 60)
 
     # Test 1: Kiểm tra kết nối
@@ -372,7 +368,7 @@ if __name__ == "__main__":
         print(f"✅ Đã kết nối Databricks Schema: {schema['tables']}")
     except Exception as e:
         print(f"❌ Lỗi kết nối: {e}")
-        exit(1)
+        return
 
     # Test 2: Hỏi đáp tương tác
     print("\n🤖 Sẵn sàng! Hãy nhập câu hỏi bằng ngôn ngữ tự nhiên (Tắt: Ctrl+C)")
@@ -384,14 +380,29 @@ if __name__ == "__main__":
             if not user_input.strip():
                 continue
                 
-            response = process_question(user_input)
+            response = await process_question(user_input)
             if response.get("error"):
                 print(f"⚠️ Agent báo lỗi: {response['error']}")
             else:
-                print(f"📝 SQL Agent sinh ra:\n{response['generated_sql']}")
-                print(f"✅ Số dòng dữ liệu Databricks trả về: {response['row_count']}")
-                print(f"📊 Gợi ý vẽ biểu đồ: {response['visualization_recommendation']['chart_type']}")
+                print(f"📝 SQL Agent sinh ra:\n\033[94m{response['generated_sql']}\033[00m")
+                print(f"✅ Kết quả trả về ({response['row_count']} dòng):")
                 
-        except KeyboardInterrupt:
+                # Hiển thị dữ liệu thực tế
+                if response["data"]:
+                    # Lấy 5 dòng đầu tiên để hiển thị cho gọn
+                    for i, row in enumerate(response["data"][:5]):
+                        print(f"   Row {i+1}: {row}")
+                    if len(response["data"]) > 5:
+                        print(f"   ... và {len(response['data']) - 5} dòng khác.")
+                else:
+                    print("   [Bảng rỗng]")
+                    
+                print(f"📊 Gợi ý vẽ biểu đồ: \033[92m{response['visualization_recommendation']['chart_type']}\033[00m")
+                
+        except (KeyboardInterrupt, EOFError):
             print("\n👋 Đã thoát phiên Chat.")
             break
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(interactive_test())

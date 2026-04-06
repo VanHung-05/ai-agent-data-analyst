@@ -141,6 +141,8 @@ def _init_databricks():
     raise NotImplementedError(
         "⚠️ Databricks LLM chưa được implement. "
         "TV2 cần hoàn thiện hàm _init_databricks()."
+        "không cần vì đã để LLM_PROVIDER = gemini trong .env"
+        "cần nâng cấp thì thêm"
     )
 
 
