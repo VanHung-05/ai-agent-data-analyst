@@ -37,11 +37,10 @@ class DatabricksConfig:
     @property
     def active_token(self) -> str:
         """Lấy token (ẩn chứa logic xin tự động qua Service Principal M2M)"""
-        active = self.token
-        if not active and self.client_id and self.client_secret:
+        if not self.token and self.client_id and self.client_secret:
             print("🔄 Đang xin cấp Token từ Databricks qua M2M Service Principal...")
-            active = self._fetch_oauth_token()
-        return active
+            self.token = self._fetch_oauth_token()
+        return self.token
 
     @property
     def sqlalchemy_uri(self) -> str:
