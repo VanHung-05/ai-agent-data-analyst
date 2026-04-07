@@ -51,7 +51,7 @@ class TestSQLValidator:
         assert is_valid is False
 
     def test_block_comment_injection(self):
-        is_valid, error = validate_sql("SELECT * FROM orders -- DROP TABLE users")
+        is_valid, error = validate_sql("SELECT * FROM orders /* DROP TABLE users */")
         assert is_valid is False
 
 
@@ -84,22 +84,21 @@ class TestAgentService:
 
     def test_recommend_chart(self):
         from services.agent_service import _recommend_chart
-        
+
         # Test time-series -> line chart
-        assert _recommend_chart("doanh thu theo tháng", [])["chart_type"] == "line"
-        
+        assert _recommend_chart("doanh thu theo thang", "SELECT month, sum(price) FROM x", [{"month": "2026-01", "revenue": 100}])["chart_type"] == "line"
+
         # Test proportion -> pie chart
-        assert _recommend_chart("tỷ lệ đơn hàng bị hủy", [])["chart_type"] == "pie"
-        
+        assert _recommend_chart("tỷ lệ đơn hàng bị hủy", "SELECT status, cnt FROM x", [{"status": "cancelled", "cnt": 10}])["chart_type"] == "pie"
+
         # Test top/ranking -> bar chart
-        assert _recommend_chart("Top 5 sản phẩm", [])["chart_type"] == "bar"
-        
-        # Test aggregation (1 result) -> table
-        assert _recommend_chart("tổng doanh thu", [{"val": 1}])["chart_type"] == "table"
-        
-        # Test aggregation (>1 results without specific keywords) -> table by default mostly
-        # Actually logic says "tổng/count" with len > 1 -> bar
-        assert _recommend_chart("đếm tổng", [{"a": 1}, {"a": 2}])["chart_type"] == "bar"
+        assert _recommend_chart("Top 5 san pham", "SELECT category, revenue FROM x GROUP BY category", [{"category": "a", "revenue": 1}])["chart_type"] == "bar"
+
+        # Test single value -> metric
+        assert _recommend_chart("tong doanh thu", "SELECT sum(price) FROM x", [{"total": 1}])["chart_type"] == "metric"
+
+        # Default view when nothing special
+        assert _recommend_chart("liet ke don hang", "SELECT id FROM x", [{"id": "o1"}, {"id": "o2"}])["chart_type"] == "table"
 
     def test_parse_query_result(self):
         from services.agent_service import _parse_query_result
