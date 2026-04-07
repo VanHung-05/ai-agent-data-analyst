@@ -4,11 +4,22 @@
 📌 TV2/TV3 viết test cho Schema Provider
 """
 
-# TODO: TV2 implement sau khi có kết nối Databricks thực tế
-# Hoặc dùng mock database để test offline
+import os
 
 import pytest
 from services.schema_service import get_table_names, get_full_schema
+
+
+pytestmark = pytest.mark.skipif(
+    not (
+        os.getenv("DATABRICKS_HOST")
+        and (
+            os.getenv("DATABRICKS_TOKEN")
+            or (os.getenv("DATABRICKS_CLIENT_ID") and os.getenv("DATABRICKS_CLIENT_SECRET"))
+        )
+    ),
+    reason="Databricks credentials are not configured for integration schema tests.",
+)
 
 class TestSchemaService:
     """Test Schema Provider (Yêu cầu M2M Auth tới Databricks hoạt động)"""
