@@ -142,6 +142,7 @@ Columns:
 9. When querying product categories in English, JOIN with product_category_name_translation.
 10. Remember: 1 order can have MULTIPLE items. Use olist_order_items for item-level analysis.
 11. For monetary calculations, ALWAYS use price/freight_value from olist_order_items (NOT from olist_products).
+12. Human-readable SELECT (end-user facing): The Olist schema has NO separate product title column (no Product_Name). For questions about "products", "expensive item", "top selling", etc., always SELECT descriptive fields that humans understand: e.g. product_category_name, and JOIN product_category_name_translation to add product_category_name_english; include seller_city/seller_state or customer_city/customer_state when the question involves geography; include order_status or formatted dates when relevant. Do NOT return only surrogate keys (product_id, customer_id, order_id, seller_id) unless the user explicitly asks for IDs only. It is OK to include an ID in addition to descriptions (e.g. category + product_id for reference).
 
 === RESPONSE FORMAT ===
 - Return ONLY the SQL query, nothing else.
@@ -173,6 +174,20 @@ SELECT SUM(oi.price) AS total_revenue
 FROM olist_order_items oi
 JOIN olist_orders o ON oi.order_id = o.order_id
 WHERE o.order_status = 'delivered'
+
+Question: Sản phẩm / mặt hàng nào có giá bán cao nhất (kèm danh mục, không chỉ mã ID)?
+SELECT p.product_id,
+  p.product_category_name,
+  t.product_category_name_english AS category_english,
+  MAX(oi.price) AS max_item_price_brl
+FROM olist_order_items oi
+JOIN olist_products p ON oi.product_id = p.product_id
+LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY p.product_id, p.product_category_name, t.product_category_name_english
+ORDER BY max_item_price_brl DESC
+LIMIT 5
 
 Question: Top 10 danh mục sản phẩm có doanh thu cao nhất?
 SELECT t.product_category_name_english AS category, SUM(oi.price) AS revenue

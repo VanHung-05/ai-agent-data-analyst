@@ -1,1 +1,83 @@
-/* Frontend styles — TV4 sẽ phát triển */
+/* ======================================================
+   AI Data Analyst — Custom Streamlit Styles
+   TV4 (Frontend)
+   ====================================================== */
+
+/* Sidebar: compact */
+[data-testid="stSidebar"] {
+    min-width: 300px;
+    max-width: 360px;
+}
+
+[data-testid="stSidebar"] .stButton > button {
+    font-size: 0.82rem;
+    padding: 0.35rem 0.6rem;
+    text-align: left;
+    border: 1px solid rgba(79, 139, 249, 0.25);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+[data-testid="stSidebar"] .stButton > button:hover {
+    border-color: #4F8BF9;
+    background-color: rgba(79, 139, 249, 0.12);
+}
+
+/* Chat: assistant bubble (user bubble is custom HTML, see chat.py) */
+[data-testid="stChatMessage"] {
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.5rem;
+    margin-right: 10%;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* Code blocks (SQL) */
+[data-testid="stCodeBlock"] {
+    border-radius: 8px;
+}
+
+/* Data table */
+[data-testid="stDataFrame"] {
+    border-radius: 8px;
+}
+
+/* Metric cards */
+[data-testid="stMetric"] {
+    background: rgba(79, 139, 249, 0.08);
+    border: 1px solid rgba(79, 139, 249, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+/* Download button */
+.stDownloadButton > button {
+    font-size: 0.82rem;
+    border-radius: 8px;
+}
+
+/* Expander headers */
+.streamlit-expanderHeader {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Spinner alignment */
+.stSpinner > div {
+    text-align: center;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
