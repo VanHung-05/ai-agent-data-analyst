@@ -103,12 +103,12 @@ def _init_gemini():
         """Wrapper biến google-genai SDK thành LangChain ChatModel"""
 
         client: Any = Field(default=None, exclude=True)
-        model_name: str = "gemini-2.0-flash"
+        model_name: str = "gemma-4-26b-a4b-it"
 
         class Config:
             arbitrary_types_allowed = True
 
-        def __init__(self, api_key: str, model: str = "gemini-2.0-flash", **kwargs):
+        def __init__(self, api_key: str, model: str = "gemma-4-26b-a4b-it", **kwargs):
             super().__init__(**kwargs)
             self.client = genai.Client(api_key=api_key)
             self.model_name = model
