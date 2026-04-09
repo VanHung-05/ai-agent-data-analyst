@@ -8,7 +8,11 @@ POST /api/v1/chat/route  → Chỉ chạy Router Agent, trả routing info (cho 
 GET  /api/v1/schema      → Trả metadata schema
 """
 
+import asyncio
+import json
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -79,6 +83,45 @@ async def chat_query(request: QueryRequest):
         return QueryResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat/query/stream")
+async def chat_query_stream(request: QueryRequest):
+    """
+    SSE stream endpoint:
+    - progress events: {"type":"progress","step":"...","message":"..."}
+    - result event: {"type":"result","data":{...QueryResponse...}}
+    - done event: {"type":"done"}
+    """
+    from services.agent_service import process_question
+
+    async def event_generator():
+        queue: asyncio.Queue[dict] = asyncio.Queue()
+
+        async def progress_hook(step: str, message: str) -> None:
+            await queue.put({"type": "progress", "step": step, "message": message})
+
+        async def worker() -> None:
+            try:
+                result = await process_question(request.question, progress_hook=progress_hook)
+                await queue.put({"type": "result", "data": result})
+            except Exception as exc:
+                await queue.put({"type": "error", "error": str(exc)})
+            finally:
+                await queue.put({"type": "done"})
+
+        task = asyncio.create_task(worker())
+        try:
+            while True:
+                evt = await queue.get()
+                yield f"data: {json.dumps(evt, ensure_ascii=False)}\n\n"
+                if evt.get("type") == "done":
+                    break
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.post("/chat/route", response_model=RouteResponse)

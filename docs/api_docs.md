@@ -1,171 +1,221 @@
-# API Documentation (Phase 1)
+# API Documentation
 
 Base URL:
-- Local: http://localhost:8000
-- API prefix: /api/v1
+- Local: `http://localhost:8000`
+- Prefix: `/api/v1`
 
-## 1. Health
+---
 
-Endpoint:
-- GET /api/v1/health
+## 1) Health
 
-Description:
-- Kiem tra trang thai API va ket noi den Databricks + LLM.
+### `GET /api/v1/health`
 
-Success response (200):
+Kiểm tra trạng thái API, Databricks và LLM (lightweight).
 
-```json
-{
-	"status": "ok",
-	"services": {
-		"api": "healthy",
-		"databricks": "healthy",
-		"llm": "healthy"
-	},
-	"errors": {
-		"databricks": null,
-		"llm": null
-	}
-}
-```
+Query params:
+- `deep` (optional, default `false`)
+  - `false`: chỉ check config LLM, không invoke model
+  - `true`: kiểm tra sâu, có invoke model
 
-Degraded response (200):
+Response 200:
 
 ```json
 {
-	"status": "degraded",
-	"services": {
-		"api": "healthy",
-		"databricks": "unhealthy",
-		"llm": "healthy"
-	},
-	"errors": {
-		"databricks": "<error detail>",
-		"llm": null
-	}
+  "status": "ok",
+  "services": {
+    "api": "healthy",
+    "databricks": "healthy",
+    "llm": "healthy"
+  },
+  "errors": {
+    "databricks": null,
+    "llm": null
+  }
 }
 ```
 
-## 2. Schema
+---
 
-Endpoint:
-- GET /api/v1/schema
+## 2) Schema
 
-Description:
-- Tra ve metadata schema hien tai tu Databricks (catalog, schema, tables, columns).
+### `GET /api/v1/schema`
 
-Success response (200):
+Trả metadata schema hiện tại từ Databricks.
+
+Response 200 (rút gọn):
 
 ```json
 {
-	"catalog": "ai_analyst",
-	"schema": "ecommerce",
-	"tables": [
-		{
-			"name": "orders",
-			"columns": [
-				{
-					"name": "order_id",
-					"type": "STRING",
-					"comment": "Order identifier"
-				}
-			],
-			"ddl": "CREATE TABLE ..."
-		}
-	],
-	"raw_info": "...",
-	"cached_at": 1770000000.0
+  "catalog": "ai_analyst",
+  "schema": "ecommerce",
+  "tables": ["olist_orders", "olist_order_items"],
+  "table_info": "..."
 }
 ```
 
-Error response (500):
+---
+
+## 3) Chat Query (JSON)
+
+### `POST /api/v1/chat/query`
+
+Nhận câu hỏi tự nhiên và trả kết quả hoàn chỉnh.
+
+Request:
 
 ```json
 {
-	"detail": "<error detail>"
+  "question": "Top 10 danh mục doanh thu cao nhất"
 }
 ```
 
-## 3. Chat Query
-
-Endpoint:
-- POST /api/v1/chat/query
-
-Description:
-- Nhan cau hoi ngon ngu tu nhien, sinh SQL, kiem tra an toan, thuc thi va tra ket qua.
-
-Request body:
+Response 200:
 
 ```json
 {
-	"question": "Top 5 san pham co doanh thu cao nhat"
+  "question": "Top 10 danh mục doanh thu cao nhất",
+  "current_agent": "sql",
+  "routing_info": {
+    "intent": "sql",
+    "scores": {
+      "conversation": 0.0,
+      "sql": 1.0,
+      "visualize": 0.0
+    },
+    "selected_agents": ["sql"],
+    "routing_method": "llm"
+  },
+  "answer": "Danh mục ...",
+  "generated_sql": "SELECT ... LIMIT 1000",
+  "data": [
+    {"category": "housewares", "revenue": 12345.67}
+  ],
+  "row_count": 1,
+  "visualization_recommendation": {
+    "chart_type": "table",
+    "x": null,
+    "y": null,
+    "title": null,
+    "reason": "Single-row aggregate (KPI) -> table"
+  },
+  "error": null
 }
 ```
 
-Success response (200):
+Failure (vẫn 200 nhưng có `error`):
 
 ```json
 {
-	"question": "Top 5 san pham co doanh thu cao nhat",
-	"generated_sql": "SELECT ... LIMIT 1000",
-	"data": [
-		{
-			"col_0": "electronics",
-			"col_1": 12345.67
-		}
-	],
-	"row_count": 1,
-	"visualization_recommendation": {
-		"chart_type": "bar",
-		"x": "col_0",
-		"y": "col_1",
-		"reason": "Comparison detected"
-	},
-	"error": null
+  "question": "...",
+  "current_agent": "conversation",
+  "routing_info": {},
+  "answer": "Xin lỗi...",
+  "generated_sql": null,
+  "data": [],
+  "row_count": 0,
+  "visualization_recommendation": {
+    "chart_type": "conversation"
+  },
+  "error": "Thất bại sau 3 lần: ..."
 }
 ```
 
-Failure response (200 with error field):
+---
+
+## 4) Chat Query Streaming (SSE)
+
+### `POST /api/v1/chat/query/stream`
+
+Trả progress realtime theo event stream + kết quả cuối.
+
+Request body giống `/chat/query`.
+
+Event format:
+
+```text
+data: {"type":"progress","step":"router","message":"Router Agent phân loại intent..."}
+
+data: {"type":"progress","step":"sql_execute","message":"Thực thi truy vấn SQL..."}
+
+data: {"type":"result","data":{...QueryResponse...}}
+
+data: {"type":"done"}
+```
+
+Các `step` thường gặp:
+- `llm_init`
+- `router`
+- `conversation`
+- `db_connect`
+- `sql_generate`
+- `sql_execute`
+- `visualize`
+- `nlg`
+- `done`
+
+---
+
+## 5) Route Debug
+
+### `POST /api/v1/chat/route`
+
+Chỉ chạy router để debug intent.
+
+Request:
+
+```json
+{ "question": "vẽ biểu đồ doanh thu theo tháng" }
+```
+
+Response:
 
 ```json
 {
-	"question": "...",
-	"generated_sql": null,
-	"data": [],
-	"row_count": 0,
-	"visualization_recommendation": {
-		"chart_type": "table"
-	},
-	"error": "That bai sau 3 lan thu: <error detail>"
+  "question": "vẽ biểu đồ doanh thu theo tháng",
+  "routing_info": {
+    "intent": "visualize",
+    "scores": {
+      "conversation": 0.0,
+      "sql": 0.1,
+      "visualize": 0.9
+    },
+    "selected_agents": ["visualize"],
+    "routing_method": "llm"
+  }
 }
 ```
 
-Server error response (500):
+---
+
+## 6) Root
+
+### `GET /`
+
+Response 200:
 
 ```json
 {
-	"detail": "<error detail>"
+  "message": "🤖 AI Agent — Smart Data Analyst API is running!"
 }
 ```
 
-## 4. Root Endpoint
+---
 
-Endpoint:
-- GET /
+## 7) HTTP lỗi chung
 
-Description:
-- Kiem tra API service da chay hay chua.
-
-Response (200):
+- `500 Internal Server Error`
 
 ```json
 {
-	"message": "AI Agent - Smart Data Analyst API is running!"
+  "detail": "<error detail>"
 }
 ```
 
-## 5. Notes for Phase 1
+---
 
-- SQL validation duoc thuc thi truoc khi query xuong Databricks.
-- API hien tai uu tien luong read-only (SELECT/CTE).
-- CORS dang mo (`allow_origins=["*"]`) de thu nghiem local; can gioi han trong production.
+## 8) Ghi chú quan trọng
+
+- SQL luôn đi qua validator/sanitizer trước khi chạy.
+- Pipeline ưu tiên read-only, chặn lệnh nguy hiểm.
+- `/health` mặc định không invoke model để giảm chi phí và tăng tốc UI.
+- Frontend có thể dùng `/chat/query` hoặc `/chat/query/stream` tùy nhu cầu realtime.

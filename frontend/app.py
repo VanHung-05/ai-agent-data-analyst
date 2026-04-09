@@ -10,6 +10,9 @@ Giao diện chat hỏi đáp dữ liệu:
 """
 
 import os
+import json
+import time
+import uuid
 from typing import Any, Dict, Optional
 
 import requests
@@ -25,24 +28,6 @@ from components.charts import render_chart
 from components.result_table import render_result_table
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000/api/v1")
-
-SAMPLE_QUESTIONS_SQL = [
-    "Tổng doanh thu là bao nhiêu?",
-    "Top 10 danh mục sản phẩm bán chạy nhất?",
-    "Số đơn hàng theo tháng năm 2017?",
-    "Phương thức thanh toán phổ biến nhất?",
-    "Điểm đánh giá trung bình theo bang?",
-    "Top 5 thành phố có nhiều người bán nhất?",
-]
-
-SAMPLE_QUESTIONS_VISUALIZE = [
-    "Vẽ biểu đồ doanh thu theo tháng năm 2017",
-    "Vẽ biểu đồ tỷ lệ phương thức thanh toán",
-    "Vẽ chart top 10 danh mục có doanh thu cao nhất",
-    "Vẽ biểu đồ trend đơn hàng theo quý",
-    "Vẽ đồ thị so sánh doanh thu theo bang",
-    "Vẽ biểu đồ phân bố điểm đánh giá",
-]
 
 
 # ──────────────────────────────────────────────
@@ -69,6 +54,95 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "backend_healthy" not in st.session_state:
     st.session_state.backend_healthy = None
+
+
+def _new_conversation_id() -> str:
+    return f"chat_{uuid.uuid4().hex[:8]}"
+
+
+def _current_conversation() -> dict:
+    cid = st.session_state.active_conversation_id
+    return st.session_state.conversations[cid]
+
+
+def _save_active_messages() -> None:
+    conv = _current_conversation()
+    conv["messages"] = list(st.session_state.messages)
+    conv["updated_at"] = time.time()
+
+
+def _load_conversation(conversation_id: str) -> None:
+    st.session_state.active_conversation_id = conversation_id
+    st.session_state.messages = list(
+        st.session_state.conversations[conversation_id].get("messages", [])
+    )
+
+
+def _make_title_from_question(question: str) -> str:
+    title = question.strip()
+    if not title:
+        return "Chat mới"
+    return title[:42] + ("..." if len(title) > 42 else "")
+
+
+def _short_text(text: str, max_len: int = 72) -> str:
+    clean = " ".join(text.strip().split())
+    if len(clean) <= max_len:
+        return clean
+    return clean[: max_len - 3] + "..."
+
+
+def _start_new_conversation() -> None:
+    # Nếu chat hiện tại còn trống thì không tạo thêm chat trống mới.
+    if not st.session_state.messages:
+        return
+    _save_active_messages()
+    new_id = _new_conversation_id()
+    st.session_state.conversations[new_id] = {
+        "title": "Chat mới",
+        "created_at": time.time(),
+        "updated_at": time.time(),
+        "messages": [],
+    }
+    _load_conversation(new_id)
+
+
+def _init_conversation_state() -> None:
+    if "conversations" not in st.session_state:
+        st.session_state.conversations = {}
+
+    if "active_conversation_id" not in st.session_state:
+        first_id = _new_conversation_id()
+        st.session_state.conversations[first_id] = {
+            "title": "Chat mới",
+            "created_at": time.time(),
+            "updated_at": time.time(),
+            "messages": [],
+        }
+        st.session_state.active_conversation_id = first_id
+        st.session_state.messages = []
+        return
+
+    # Nếu có active conversation thì nạp messages tương ứng
+    active_id = st.session_state.active_conversation_id
+    if active_id in st.session_state.conversations:
+        st.session_state.messages = list(
+            st.session_state.conversations[active_id].get("messages", [])
+        )
+    else:
+        # fallback khi id cũ không còn
+        first_id = _new_conversation_id()
+        st.session_state.conversations[first_id] = {
+            "title": "Chat mới",
+            "created_at": time.time(),
+            "updated_at": time.time(),
+            "messages": [],
+        }
+        st.session_state.active_conversation_id = first_id
+        st.session_state.messages = []
+
+
+_init_conversation_state()
 
 
 # ──────────────────────────────────────────────
@@ -98,6 +172,87 @@ def _api_post_query(question: str) -> dict:
         return {"error": str(e), "answer": "", "data": [], "row_count": 0, "visualization_recommendation": {}, "current_agent": "error", "routing_info": {}, "generated_sql": None, "question": question}
 
 
+def _api_post_query_stream(
+    question: str,
+    on_progress: Optional[Any] = None,
+) -> dict:
+    """Gọi SSE stream endpoint để nhận progress realtime + result cuối."""
+    url = f"{BACKEND_URL}/chat/query/stream"
+    try:
+        with requests.post(url, json={"question": question}, stream=True, timeout=240) as r:
+            r.raise_for_status()
+            final_result: Optional[dict] = None
+            for raw_line in r.iter_lines(decode_unicode=True):
+                if not raw_line or not raw_line.startswith("data: "):
+                    continue
+                payload = raw_line[6:]
+                try:
+                    evt = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+
+                evt_type = evt.get("type")
+                if evt_type == "progress":
+                    if on_progress is not None:
+                        on_progress(evt.get("step", ""), evt.get("message", ""))
+                elif evt_type == "result":
+                    final_result = evt.get("data", {})
+                elif evt_type == "error":
+                    return {
+                        "error": evt.get("error", "Streaming error"),
+                        "answer": "",
+                        "data": [],
+                        "row_count": 0,
+                        "visualization_recommendation": {},
+                        "current_agent": "error",
+                        "routing_info": {},
+                        "generated_sql": None,
+                        "question": question,
+                    }
+                elif evt_type == "done":
+                    break
+
+            if final_result is not None:
+                return final_result
+
+    except Exception as e:
+        return {
+            "error": f"Streaming failed: {str(e)}",
+            "answer": "",
+            "data": [],
+            "row_count": 0,
+            "visualization_recommendation": {},
+            "current_agent": "error",
+            "routing_info": {},
+            "generated_sql": None,
+            "question": question,
+        }
+
+    return {
+        "error": "Không nhận được kết quả stream.",
+        "answer": "",
+        "data": [],
+        "row_count": 0,
+        "visualization_recommendation": {},
+        "current_agent": "error",
+        "routing_info": {},
+        "generated_sql": None,
+        "question": question,
+    }
+
+
+@st.cache_data(ttl=20, show_spinner=False)
+def _cached_health() -> Optional[Dict[str, Any]]:
+    """Cache health để tránh gọi lại mỗi lần rerun UI."""
+    return _api_get("/health")
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _cached_schema() -> Optional[Dict[str, Any]]:
+    """Schema ít đổi, cache 5 phút cho UI mượt hơn."""
+    return _api_get("/schema")
+
+
 # ──────────────────────────────────────────────
 # SIDEBAR
 # ──────────────────────────────────────────────
@@ -109,7 +264,7 @@ with st.sidebar:
     st.divider()
 
     # Health check
-    health = _api_get("/health")
+    health = _cached_health()
     if health:
         status = health.get("status", "unknown")
         services = health.get("services", {})
@@ -130,7 +285,9 @@ with st.sidebar:
 
     # Schema info
     with st.expander("📂 Database Schema", expanded=False):
-        schema = _api_get("/schema")
+        if st.button("Tải schema", key="load_schema_btn", use_container_width=True):
+            _cached_schema.clear()
+        schema = _cached_schema()
         if schema:
             tables = schema.get("tables", [])
             if isinstance(tables, list) and tables:
@@ -147,23 +304,41 @@ with st.sidebar:
 
     st.divider()
 
-    # Sample questions — SQL Agent
-    st.subheader("🗃️ Truy vấn dữ liệu")
-    for q in SAMPLE_QUESTIONS_SQL:
-        if st.button(q, key=f"sql_{q}", use_container_width=True):
-            st.session_state["_pending_question"] = q
+    # Conversations
+    st.subheader("💬 Lịch sử chat")
+    if st.button("➕ Chat mới", use_container_width=True):
+        _start_new_conversation()
+        st.rerun()
+
+    with st.expander("🕘 Mở cuộc trò chuyện", expanded=True):
+        conversations = st.session_state.conversations
+        sorted_items = sorted(
+            conversations.items(),
+            key=lambda x: x[1].get("updated_at", 0),
+            reverse=True,
+        )
+        for cid, conv in sorted_items:
+            messages = conv.get("messages", [])
+            title = conv.get("title", "Chat mới")
+            is_active = cid == st.session_state.active_conversation_id
+
+            # Chỉ ẩn chat trống chưa dùng (nhưng vẫn giữ chat active).
+            if (not messages) and (not is_active):
+                continue
+
+            if st.button(
+                title,
+                key=f"conv_{cid}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+            ):
+                _load_conversation(cid)
+                st.rerun()
 
     st.divider()
-
-    # Sample questions — Visualize Agent
-    st.subheader("📊 Vẽ biểu đồ")
-    for q in SAMPLE_QUESTIONS_VISUALIZE:
-        if st.button(q, key=f"viz_{q}", use_container_width=True):
-            st.session_state["_pending_question"] = q
-
-    st.divider()
-    if st.button("🗑️ Xóa lịch sử chat", use_container_width=True):
+    if st.button("🗑️ Xóa chat hiện tại", use_container_width=True):
         st.session_state.messages = []
+        _save_active_messages()
         st.rerun()
 
 
@@ -177,12 +352,24 @@ render_chat_history()
 
 def _handle_question(question: str) -> None:
     """Gửi câu hỏi → Backend → hiển thị kết quả."""
+    conv = _current_conversation()
+    if conv.get("title", "Chat mới") == "Chat mới":
+        conv["title"] = _make_title_from_question(question)
+
     append_user_message(question)
     render_user_bubble(question)
 
     with st.chat_message("assistant", avatar="🤖"):
-        with st.spinner("Đang phân tích..."):
-            resp = _api_post_query(question)
+        short_q = _short_text(question, 90)
+        with st.status("Đang phân tích...", expanded=True) as status:
+            step_placeholder = st.empty()
+            step_placeholder.caption("Đang chờ backend...")
+
+            def _on_progress(step: str, message: str) -> None:
+                step_placeholder.caption(f"• {message}")
+
+            resp = _api_post_query_stream(question, on_progress=_on_progress)
+            status.update(label="Phân tích xong", state="complete")
 
         agent = resp.get("current_agent", "")
         answer = resp.get("answer", "")
@@ -231,13 +418,13 @@ def _handle_question(question: str) -> None:
         error=error,
         routing_info=routing,
     )
+    _save_active_messages()
 
 
 # Chat input (bottom bar)
 user_input = st.chat_input("Hỏi gì về dữ liệu Olist?")
 
-pending = st.session_state.pop("_pending_question", None)
-question = user_input or pending
+question = user_input
 
 if question:
     _handle_question(question)

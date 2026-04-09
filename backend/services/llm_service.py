@@ -19,8 +19,12 @@ from langchain_openai import ChatOpenAI
 # Import config
 import sys
 import os
+import threading
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import llm_config, databricks_config
+
+_llm_instance = None
+_llm_lock = threading.Lock()
 
 
 def get_llm():
@@ -37,19 +41,28 @@ def get_llm():
         >>> llm = get_llm()
         >>> response = llm.invoke("Xin chào!")
     """
-    provider = llm_config.provider.lower()
+    global _llm_instance
+    if _llm_instance is not None:
+        return _llm_instance
 
-    if provider == "openai":
-        return _init_openai()
-    elif provider == "gemini":
-        return _init_gemini()
-    elif provider == "databricks":
-        return _init_databricks()
-    else:
-        raise ValueError(
-            f"❌ LLM_PROVIDER không hợp lệ: '{provider}'. "
-            f"Chỉ chấp nhận 'openai', 'gemini' hoặc 'databricks'."
-        )
+    with _llm_lock:
+        if _llm_instance is not None:
+            return _llm_instance
+
+        provider = llm_config.provider.lower()
+
+        if provider == "openai":
+            _llm_instance = _init_openai()
+        elif provider == "gemini":
+            _llm_instance = _init_gemini()
+        elif provider == "databricks":
+            _llm_instance = _init_databricks()
+        else:
+            raise ValueError(
+                f"❌ LLM_PROVIDER không hợp lệ: '{provider}'. "
+                f"Chỉ chấp nhận 'openai', 'gemini' hoặc 'databricks'."
+            )
+        return _llm_instance
 
 
 def _init_openai():

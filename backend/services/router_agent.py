@@ -29,6 +29,40 @@ _VISUALIZE_KEYWORDS = [
 ]
 
 
+def _parse_confidence_scores(raw_output: str) -> dict[str, float]:
+    """
+    Parse confidence JSON từ output LLM (có thể lẫn markdown/text).
+    Tham khảo pattern từ `src/router/router.py`: regex lấy `{...}` + fallback regex theo key.
+    """
+    # 1) Thử bắt JSON object đầu tiên
+    json_match = re.search(r"\{[^{}]+\}", raw_output)
+    if json_match:
+        try:
+            parsed = json.loads(json_match.group(0))
+            return {k: float(parsed.get(k, 0.0)) for k in _ROUTER_LABELS}
+        except Exception:
+            pass
+
+    # 2) Thử strip fenced code rồi json.loads
+    cleaned = raw_output.replace("```json", "").replace("```", "").strip()
+    try:
+        parsed = json.loads(cleaned)
+        return {k: float(parsed.get(k, 0.0)) for k in _ROUTER_LABELS}
+    except Exception:
+        pass
+
+    # 3) Fallback: regex theo từng key
+    scores: dict[str, float] = {k: 0.0 for k in _ROUTER_LABELS}
+    for label in _ROUTER_LABELS:
+        match = re.search(rf'{label}["\']?\s*:\s*(\d+\.?\d*)', raw_output, flags=re.IGNORECASE)
+        if match:
+            try:
+                scores[label] = float(match.group(1))
+            except ValueError:
+                continue
+    return scores
+
+
 def rule_based_intent(question: str) -> str:
     """
     Fallback: phân loại intent bằng keyword matching.
@@ -84,13 +118,10 @@ def route_detail(question: str, llm: Any) -> dict[str, Any]:
         response = llm.invoke(prompt)
         content = response.content if hasattr(response, "content") else str(response)
 
-        json_match = re.search(r"\{[^{}]+\}", content)
-        raw_json = json_match.group(0) if json_match else content.strip()
-        parsed = json.loads(raw_json)
-
         scores: dict[str, float] = {}
+        parsed_scores = _parse_confidence_scores(content)
         for label in _ROUTER_LABELS:
-            val = float(parsed.get(label, 0.0))
+            val = float(parsed_scores.get(label, 0.0))
             scores[label] = max(0.0, min(1.0, val))
 
         total = sum(scores.values())

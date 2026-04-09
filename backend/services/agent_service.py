@@ -18,7 +18,8 @@ import asyncio
 import concurrent.futures
 import os
 import re
-from typing import Any
+import threading
+from typing import Any, Awaitable, Callable
 
 from langchain_community.utilities import SQLDatabase
 from langchain.chains import create_sql_query_chain
@@ -39,23 +40,27 @@ from utils.logger import logger
 
 # ====== SINGLETON ======
 _db_instance: SQLDatabase | None = None
+_db_lock = threading.Lock()
 
 
 def get_database() -> SQLDatabase:
-    """Khởi tạo kết nối SQLDatabase tới Databricks (Singleton)."""
+    """Khởi tạo kết nối SQLDatabase tới Databricks (Singleton, thread-safe)."""
     global _db_instance
-    if _db_instance is None:
-        has_token = bool(databricks_config.token)
-        has_sp = bool(databricks_config.client_id and databricks_config.client_secret)
-        if not databricks_config.host or (not has_token and not has_sp):
-            raise ConnectionError(
-                "Thiếu thông tin kết nối Databricks! "
-                "Cần DATABRICKS_HOST + (TOKEN hoặc CLIENT_ID/CLIENT_SECRET) trong .env"
-            )
-        uri = databricks_config.sqlalchemy_uri
-        _db_instance = SQLDatabase.from_uri(uri)
-        logger.info("Đã kết nối Databricks: %s | Tables: %s",
-                     databricks_config.host, _db_instance.get_usable_table_names())
+    if _db_instance is not None:
+        return _db_instance
+    with _db_lock:
+        if _db_instance is None:
+            has_token = bool(databricks_config.token)
+            has_sp = bool(databricks_config.client_id and databricks_config.client_secret)
+            if not databricks_config.host or (not has_token and not has_sp):
+                raise ConnectionError(
+                    "Thiếu thông tin kết nối Databricks! "
+                    "Cần DATABRICKS_HOST + (TOKEN hoặc CLIENT_ID/CLIENT_SECRET) trong .env"
+                )
+            uri = databricks_config.sqlalchemy_uri
+            _db_instance = SQLDatabase.from_uri(uri)
+            logger.info("Đã kết nối Databricks: %s | Tables: %s",
+                        databricks_config.host, _db_instance.get_usable_table_names())
     return _db_instance
 
 
@@ -90,6 +95,23 @@ async def _run_in_executor(func: Any, *args: Any) -> Any:
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
         return await loop.run_in_executor(pool, lambda: func(*args))
+
+
+async def _emit_progress(
+    progress_hook: Callable[[str, str], Awaitable[None] | None] | None,
+    step: str,
+    message: str,
+) -> None:
+    """Phát progress event (nếu có hook)."""
+    if progress_hook is None:
+        return
+    try:
+        maybe = progress_hook(step, message)
+        if asyncio.iscoroutine(maybe):
+            await maybe
+    except Exception:
+        # Không để lỗi progress làm hỏng luồng xử lý chính
+        return
 
 
 def _create_sql_query_chain(llm: Any, db: SQLDatabase) -> Any:
@@ -173,7 +195,11 @@ def _rename_parsed_columns(data: list[dict[str, Any]], sql: str) -> list[dict[st
 
 
 # ====== MAIN ORCHESTRATOR ======
-async def process_question(question: str, max_retries: int = 3) -> dict[str, Any]:
+async def process_question(
+    question: str,
+    max_retries: int = 3,
+    progress_hook: Callable[[str, str], Awaitable[None] | None] | None = None,
+) -> dict[str, Any]:
     """
     Hàm chính: điều phối Multi-Agent pipeline.
 
@@ -204,6 +230,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
 
     # ── Bước 1: Khởi tạo LLM ──
     try:
+        await _emit_progress(progress_hook, "llm_init", "Khởi tạo LLM...")
         llm = await _run_in_executor(get_llm)
     except Exception as e:
         result["error"] = f"Lỗi khởi tạo LLM: {str(e)}"
@@ -212,6 +239,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
         return result
 
     # ── Bước 2: Router Agent ──
+    await _emit_progress(progress_hook, "router", "Router Agent phân loại intent...")
     routing = await _run_in_executor(route_detail, question, llm)
     route = routing["intent"]
     result["routing_info"] = routing
@@ -219,6 +247,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
 
     # ── Bước 3a: Conversation Agent (short-circuit, không cần Databricks) ──
     if route == "conversation":
+        await _emit_progress(progress_hook, "conversation", "Conversation Agent đang phản hồi...")
         message = await _run_in_executor(conversation_response, question, None, llm)
         result["answer"] = message
         result["data"] = [{"assistant_response": message}]
@@ -231,6 +260,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
 
     # ── Bước 3b: SQL Agent (+ Visualize Agent nếu route == visualize) ──
     try:
+        await _emit_progress(progress_hook, "db_connect", "Kết nối Databricks...")
         db = await _run_in_executor(get_database)
     except Exception as e:
         result["error"] = f"Lỗi kết nối Databricks: {str(e)}"
@@ -247,6 +277,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
     while retries < max_retries:
         try:
             # Sinh SQL
+            await _emit_progress(progress_hook, "sql_generate", f"Sinh SQL (lần {retries + 1}/{max_retries})...")
             if retries == 0:
                 prompt_input = {
                     "question": f"{system_prompt}\n\nUser Question: {question}"
@@ -273,6 +304,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
             result["generated_sql"] = generated_sql
 
             # Thực thi
+            await _emit_progress(progress_hook, "sql_execute", "Thực thi truy vấn SQL...")
             execute_tool = QuerySQLDataBaseTool(db=db)
             raw_result = await _run_in_executor(execute_tool.invoke, generated_sql)
 
@@ -282,6 +314,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
             result["row_count"] = len(result["data"])
 
             # Visualize Agent
+            await _emit_progress(progress_hook, "visualize", "Đề xuất trực quan hóa dữ liệu...")
             chart_rec = await _run_in_executor(
                 recommend_chart, question, generated_sql, result["data"], llm
             )
@@ -289,6 +322,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
             result["visualization_recommendation"] = chart_rec
 
             # NLG: diễn giải dữ liệu thành câu trả lời tự nhiên (raw rows vẫn ở `data`)
+            await _emit_progress(progress_hook, "nlg", "Tạo câu trả lời tự nhiên...")
             result["answer"] = await _run_in_executor(
                 generate_natural_language_answer, question, result["data"], llm
             )
@@ -296,6 +330,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
 
             if retries > 0:
                 logger.info("Retry lần %s thành công", retries)
+            await _emit_progress(progress_hook, "done", "Hoàn tất.")
             return result
 
         except Exception as e:
@@ -304,6 +339,7 @@ async def process_question(question: str, max_retries: int = 3) -> dict[str, Any
             logger.warning("Lỗi SQL (thử %s/%s): %s", retries, max_retries, last_error_str)
 
             if retries >= max_retries:
+                await _emit_progress(progress_hook, "fallback", "SQL thất bại, chuyển sang Conversation Agent...")
                 fallback_msg = await _run_in_executor(
                     conversation_response, question, last_error_str, llm
                 )

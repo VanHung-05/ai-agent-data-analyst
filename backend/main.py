@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import app_config
 from routers import query, health
+from utils.logger import logger
 
 # ====== KHỞI TẠO APP ======
 app = FastAPI(
@@ -32,6 +33,23 @@ app.add_middleware(
 # ====== ĐĂNG KÝ ROUTERS ======
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
+
+
+@app.on_event("startup")
+def warmup_dependencies() -> None:
+    """
+    Warm-up ngay khi backend khởi động:
+    - Kết nối Databricks warehouse sớm để frontend vào là sẵn sàng query.
+    """
+    try:
+        from services.agent_service import get_database
+
+        db = get_database()
+        db.run("SELECT 1")
+        logger.info("Startup warm-up Databricks: OK")
+    except Exception as exc:
+        # Không crash app để vẫn truy cập được /health và đọc lỗi chi tiết.
+        logger.warning("Startup warm-up Databricks failed: %s", exc)
 
 
 @app.get("/")
