@@ -43,7 +43,8 @@ def render_chart(data: list[dict], viz: dict) -> None:
         st.info(f"Loại biểu đồ `{chart_type}` chưa hỗ trợ. Hiển thị dạng bảng.")
         return
 
-    title = viz.get("title") or ""
+    # Ẩn title để không lặp lại câu hỏi trên biểu đồ
+    title = ""
     reason = viz.get("reason") or ""
     if reason:
         st.caption(f"💡 {reason}")
