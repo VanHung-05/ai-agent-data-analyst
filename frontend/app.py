@@ -285,7 +285,7 @@ with st.sidebar:
 
     # Schema info
     with st.expander("📂 Database Schema", expanded=False):
-        if st.button("Tải schema", key="load_schema_btn", use_container_width=True):
+        if st.button("Tải schema", key="load_schema_btn", width="stretch"):
             _cached_schema.clear()
         schema = _cached_schema()
         if schema:
@@ -306,7 +306,7 @@ with st.sidebar:
 
     # Conversations
     st.subheader("💬 Lịch sử chat")
-    if st.button("➕ Chat mới", use_container_width=True):
+    if st.button("➕ Chat mới", width="stretch"):
         _start_new_conversation()
         st.rerun()
 
@@ -329,14 +329,14 @@ with st.sidebar:
             if st.button(
                 title,
                 key=f"conv_{cid}",
-                use_container_width=True,
+                width="stretch",
                 type="primary" if is_active else "secondary",
             ):
                 _load_conversation(cid)
                 st.rerun()
 
     st.divider()
-    if st.button("🗑️ Xóa chat hiện tại", use_container_width=True):
+    if st.button("🗑️ Xóa chat hiện tại", width="stretch"):
         st.session_state.messages = []
         _save_active_messages()
         st.rerun()

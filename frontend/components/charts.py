@@ -55,7 +55,7 @@ def render_chart(data: list[dict], viz: dict) -> None:
             margin=dict(l=40, r=20, t=50, b=40),
             height=420,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def _resolve_axes(df: pd.DataFrame, viz: dict, chart_type: str = "") -> tuple[str, str]:
