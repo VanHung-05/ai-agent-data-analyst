@@ -63,9 +63,9 @@ with sql.connect(
     with conn.cursor() as cur:
         # 1) baseline read should pass
         run_query(cur, "SELECT current_user()")
-        run_query(cur, "SELECT COUNT(*) FROM ai_analyst.ecommerce.orders")
+        run_query(cur, "SELECT COUNT(*) FROM ai_analyst.ecommerce.olist_orders")
 
-        # 2) write tests should fail
-        run_query(cur, "INSERT INTO ai_analyst.ecommerce.orders VALUES ('Z998','U001','P001',1,1.00,DATE '2026-04-02','pending')")
-        run_query(cur, "UPDATE ai_analyst.ecommerce.orders SET quantity = 99 WHERE order_id = 'O001'")
-        run_query(cur, "DELETE FROM ai_analyst.ecommerce.orders WHERE order_id = 'O001'")
+        # 2) write tests should fail (bảng olist thực tế — Service Principal chỉ có SELECT)
+        run_query(cur, "INSERT INTO ai_analyst.ecommerce.olist_orders (order_id, customer_id, order_status) VALUES ('TEST_Z998', 'TEST_CUST', 'created')")
+        run_query(cur, "UPDATE ai_analyst.ecommerce.olist_orders SET order_status = 'canceled' WHERE order_id = 'TEST_Z998'")
+        run_query(cur, "DELETE FROM ai_analyst.ecommerce.olist_orders WHERE order_id = 'TEST_Z998'")
