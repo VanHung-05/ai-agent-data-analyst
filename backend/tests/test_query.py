@@ -12,37 +12,37 @@ class TestSQLValidator:
     """Test SQL Validator — đảm bảo chặn được lệnh nguy hiểm"""
 
     def test_valid_select(self):
-        is_valid, error = validate_sql("SELECT * FROM orders LIMIT 10")
+        is_valid, error = validate_sql("SELECT * FROM olist_orders LIMIT 10")
         assert is_valid is True
         assert error is None
 
     def test_valid_with_cte(self):
-        sql = "WITH cte AS (SELECT * FROM orders) SELECT * FROM cte LIMIT 10"
+        sql = "WITH cte AS (SELECT * FROM olist_orders) SELECT * FROM cte LIMIT 10"
         is_valid, error = validate_sql(sql)
         assert is_valid is True
 
     def test_block_drop(self):
-        is_valid, error = validate_sql("DROP TABLE orders")
+        is_valid, error = validate_sql("DROP TABLE olist_orders")
         assert is_valid is False
         assert "DROP" in error
 
     def test_block_delete(self):
-        is_valid, error = validate_sql("DELETE FROM users WHERE id = 1")
+        is_valid, error = validate_sql("DELETE FROM olist_customers WHERE customer_id = 'abc'")
         assert is_valid is False
         assert "DELETE" in error
 
     def test_block_update(self):
-        is_valid, error = validate_sql("UPDATE orders SET status = 'done'")
+        is_valid, error = validate_sql("UPDATE olist_orders SET order_status = 'canceled'")
         assert is_valid is False
         assert "UPDATE" in error
 
     def test_block_insert(self):
-        is_valid, error = validate_sql("INSERT INTO orders VALUES (1, 2, 3)")
+        is_valid, error = validate_sql("INSERT INTO olist_orders VALUES (1, 2, 3)")
         assert is_valid is False
         assert "INSERT" in error
 
     def test_block_excessive_limit(self):
-        is_valid, error = validate_sql("SELECT * FROM orders LIMIT 99999")
+        is_valid, error = validate_sql("SELECT * FROM olist_orders LIMIT 99999")
         assert is_valid is False
         assert "LIMIT" in error
 
@@ -51,7 +51,7 @@ class TestSQLValidator:
         assert is_valid is False
 
     def test_block_comment_injection(self):
-        is_valid, error = validate_sql("SELECT * FROM orders /* DROP TABLE users */")
+        is_valid, error = validate_sql("SELECT * FROM olist_orders /* DROP TABLE olist_customers */")
         assert is_valid is False
 
 
@@ -59,11 +59,11 @@ class TestSanitizeSQL:
     """Test SQL sanitizer — tự động thêm LIMIT"""
 
     def test_add_limit_when_missing(self):
-        result = sanitize_sql("SELECT * FROM orders")
+        result = sanitize_sql("SELECT * FROM olist_orders")
         assert "LIMIT" in result.upper()
 
     def test_keep_existing_limit(self):
-        result = sanitize_sql("SELECT * FROM orders LIMIT 50")
+        result = sanitize_sql("SELECT * FROM olist_orders LIMIT 50")
         assert "LIMIT 50" in result.upper()
 
 
