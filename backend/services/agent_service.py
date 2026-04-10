@@ -19,11 +19,12 @@ import concurrent.futures
 import os
 import re
 import threading
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, TypedDict
 
 from langchain_community.utilities import SQLDatabase
 from langchain.chains import create_sql_query_chain
 from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
+from langgraph.graph import END, StateGraph
 
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -41,6 +42,8 @@ from utils.logger import logger
 # ====== SINGLETON ======
 _db_instance: SQLDatabase | None = None
 _db_lock = threading.Lock()
+_workflow = None
+_workflow_lock = threading.Lock()
 
 
 def get_database() -> SQLDatabase:
@@ -194,6 +197,188 @@ def _rename_parsed_columns(data: list[dict[str, Any]], sql: str) -> list[dict[st
     return renamed
 
 
+class WorkflowState(TypedDict, total=False):
+    """State dùng cho LangGraph workflow."""
+
+    question: str
+    max_retries: int
+    llm: Any
+    progress_hook: Callable[[str, str], Awaitable[None] | None] | None
+    route: str
+    result: dict[str, Any]
+
+
+async def _node_router(state: WorkflowState) -> WorkflowState:
+    """Node Router: phân loại intent và cập nhật routing_info."""
+    question = state["question"]
+    llm = state["llm"]
+    result = state["result"]
+    progress_hook = state.get("progress_hook")
+
+    await _emit_progress(progress_hook, "router", "Router Agent phân loại intent...")
+    routing = await _run_in_executor(route_detail, question, llm)
+    route = routing["intent"]
+    result["routing_info"] = routing
+    result["current_agent"] = route
+    return {"route": route, "result": result}
+
+
+async def _node_conversation(state: WorkflowState) -> WorkflowState:
+    """Node Conversation: trả lời hội thoại, không truy vấn DB."""
+    question = state["question"]
+    llm = state["llm"]
+    result = state["result"]
+    progress_hook = state.get("progress_hook")
+
+    await _emit_progress(progress_hook, "conversation", "Conversation Agent đang phản hồi...")
+    message = await _run_in_executor(conversation_response, question, None, llm)
+    result["answer"] = message
+    result["data"] = [{"assistant_response": message}]
+    result["row_count"] = 1
+    result["visualization_recommendation"] = {
+        "chart_type": "conversation",
+        "reason": "Routed to Conversation Agent",
+    }
+    result["error"] = None
+    await _emit_progress(progress_hook, "done", "Hoàn tất.")
+    return {"result": result}
+
+
+async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
+    """Node SQL pipeline: SQL -> Execute -> Visualize -> NLG."""
+    question = state["question"]
+    llm = state["llm"]
+    max_retries = state["max_retries"]
+    result = state["result"]
+    route = state.get("route", "sql")
+    progress_hook = state.get("progress_hook")
+
+    try:
+        await _emit_progress(progress_hook, "db_connect", "Kết nối Databricks...")
+        db = await _run_in_executor(get_database)
+    except Exception as e:
+        result["error"] = f"Lỗi kết nối Databricks: {str(e)}"
+        result["answer"] = await _run_in_executor(conversation_response, question, str(e), llm)
+        result["current_agent"] = "conversation"
+        logger.exception("Database connection error")
+        return {"result": result}
+
+    system_prompt = await _run_in_executor(_load_system_prompt)
+    retries = 0
+    last_error_str = ""
+
+    while retries < max_retries:
+        try:
+            await _emit_progress(progress_hook, "sql_generate", f"Sinh SQL (lần {retries + 1}/{max_retries})...")
+            if retries == 0:
+                prompt_input = {
+                    "question": f"{system_prompt}\n\nUser Question: {question}"
+                }
+            else:
+                prompt_input = {
+                    "question": (
+                        f"{system_prompt}\n\n"
+                        f"Câu hỏi gốc: {question}\n"
+                        f"LỖI TRƯỚC ĐÓ: {last_error_str}\n"
+                        f"Hãy viết lại SQL Spark chính xác hơn. Chỉ xuất SQL, không giải thích."
+                    )
+                }
+
+            write_query = await _run_in_executor(_create_sql_query_chain, llm, db)
+            raw_sql = await _run_in_executor(write_query.invoke, prompt_input)
+            generated_sql = _clean_sql_output(raw_sql)
+
+            is_valid, error_msg = validate_sql(generated_sql)
+            if not is_valid:
+                raise ValueError(f"SQL bị chặn: {error_msg}")
+
+            generated_sql = sanitize_sql(generated_sql)
+            result["generated_sql"] = generated_sql
+
+            await _emit_progress(progress_hook, "sql_execute", "Thực thi truy vấn SQL...")
+            execute_tool = QuerySQLDataBaseTool(db=db)
+            raw_result = await _run_in_executor(execute_tool.invoke, generated_sql)
+
+            result["data"] = parse_query_result(raw_result)
+            result["data"] = _rename_parsed_columns(result["data"], generated_sql)
+            result["row_count"] = len(result["data"])
+
+            await _emit_progress(progress_hook, "visualize", "Đề xuất trực quan hóa dữ liệu...")
+            chart_rec = await _run_in_executor(
+                recommend_chart, question, generated_sql, result["data"], llm
+            )
+            chart_rec["routed_agent"] = route
+            result["visualization_recommendation"] = chart_rec
+
+            await _emit_progress(progress_hook, "nlg", "Tạo câu trả lời tự nhiên...")
+            result["answer"] = await _run_in_executor(
+                generate_natural_language_answer, question, result["data"], llm
+            )
+            result["error"] = None
+
+            if retries > 0:
+                logger.info("Retry lần %s thành công", retries)
+            await _emit_progress(progress_hook, "done", "Hoàn tất.")
+            return {"result": result}
+
+        except Exception as e:
+            retries += 1
+            last_error_str = str(e)
+            logger.warning("Lỗi SQL (thử %s/%s): %s", retries, max_retries, last_error_str)
+
+            if retries >= max_retries:
+                await _emit_progress(progress_hook, "fallback", "SQL thất bại, chuyển sang Conversation Agent...")
+                fallback_msg = await _run_in_executor(
+                    conversation_response, question, last_error_str, llm
+                )
+                result["error"] = f"Thất bại sau {max_retries} lần: {last_error_str}"
+                result["answer"] = fallback_msg
+                result["current_agent"] = "conversation"
+                result["visualization_recommendation"] = {
+                    "chart_type": "conversation",
+                    "reason": "SQL failed, fallback to Conversation Agent",
+                }
+                return {"result": result}
+
+            await asyncio.sleep(1)
+
+    return {"result": result}
+
+
+def _next_after_router(state: WorkflowState) -> str:
+    """Router edge: chọn node tiếp theo theo intent."""
+    route = state.get("route", "conversation")
+    return "conversation" if route == "conversation" else "sql_pipeline"
+
+
+def _get_workflow():
+    """Khởi tạo LangGraph workflow một lần (singleton)."""
+    global _workflow
+    if _workflow is not None:
+        return _workflow
+
+    with _workflow_lock:
+        if _workflow is None:
+            workflow = StateGraph(WorkflowState)
+            workflow.add_node("router", _node_router)
+            workflow.add_node("conversation", _node_conversation)
+            workflow.add_node("sql_pipeline", _node_sql_pipeline)
+            workflow.set_entry_point("router")
+            workflow.add_conditional_edges(
+                "router",
+                _next_after_router,
+                {
+                    "conversation": "conversation",
+                    "sql_pipeline": "sql_pipeline",
+                },
+            )
+            workflow.add_edge("conversation", END)
+            workflow.add_edge("sql_pipeline", END)
+            _workflow = workflow.compile()
+
+    return _workflow
+
+
 # ====== MAIN ORCHESTRATOR ======
 async def process_question(
     question: str,
@@ -238,123 +423,18 @@ async def process_question(
         logger.exception("LLM init error")
         return result
 
-    # ── Bước 2: Router Agent ──
-    await _emit_progress(progress_hook, "router", "Router Agent phân loại intent...")
-    routing = await _run_in_executor(route_detail, question, llm)
-    route = routing["intent"]
-    result["routing_info"] = routing
-    result["current_agent"] = route
-
-    # ── Bước 3a: Conversation Agent (short-circuit, không cần Databricks) ──
-    if route == "conversation":
-        await _emit_progress(progress_hook, "conversation", "Conversation Agent đang phản hồi...")
-        message = await _run_in_executor(conversation_response, question, None, llm)
-        result["answer"] = message
-        result["data"] = [{"assistant_response": message}]
-        result["row_count"] = 1
-        result["visualization_recommendation"] = {
-            "chart_type": "conversation",
-            "reason": "Routed to Conversation Agent",
+    workflow = _get_workflow()
+    final_state = await workflow.ainvoke(
+        {
+            "question": question,
+            "max_retries": max_retries,
+            "llm": llm,
+            "progress_hook": progress_hook,
+            "result": result,
+            "route": "conversation",
         }
-        return result
-
-    # ── Bước 3b: SQL Agent (+ Visualize Agent nếu route == visualize) ──
-    try:
-        await _emit_progress(progress_hook, "db_connect", "Kết nối Databricks...")
-        db = await _run_in_executor(get_database)
-    except Exception as e:
-        result["error"] = f"Lỗi kết nối Databricks: {str(e)}"
-        result["answer"] = await _run_in_executor(conversation_response, question, str(e), llm)
-        result["current_agent"] = "conversation"
-        logger.exception("Database connection error")
-        return result
-
-    system_prompt = await _run_in_executor(_load_system_prompt)
-
-    retries = 0
-    last_error_str = ""
-
-    while retries < max_retries:
-        try:
-            # Sinh SQL
-            await _emit_progress(progress_hook, "sql_generate", f"Sinh SQL (lần {retries + 1}/{max_retries})...")
-            if retries == 0:
-                prompt_input = {
-                    "question": f"{system_prompt}\n\nUser Question: {question}"
-                }
-            else:
-                prompt_input = {
-                    "question": (
-                        f"{system_prompt}\n\n"
-                        f"Câu hỏi gốc: {question}\n"
-                        f"LỖI TRƯỚC ĐÓ: {last_error_str}\n"
-                        f"Hãy viết lại SQL Spark chính xác hơn. Chỉ xuất SQL, không giải thích."
-                    )
-                }
-
-            write_query = await _run_in_executor(_create_sql_query_chain, llm, db)
-            raw_sql = await _run_in_executor(write_query.invoke, prompt_input)
-            generated_sql = _clean_sql_output(raw_sql)
-
-            is_valid, error_msg = validate_sql(generated_sql)
-            if not is_valid:
-                raise ValueError(f"SQL bị chặn: {error_msg}")
-
-            generated_sql = sanitize_sql(generated_sql)
-            result["generated_sql"] = generated_sql
-
-            # Thực thi
-            await _emit_progress(progress_hook, "sql_execute", "Thực thi truy vấn SQL...")
-            execute_tool = QuerySQLDataBaseTool(db=db)
-            raw_result = await _run_in_executor(execute_tool.invoke, generated_sql)
-
-            # Parse
-            result["data"] = parse_query_result(raw_result)
-            result["data"] = _rename_parsed_columns(result["data"], generated_sql)
-            result["row_count"] = len(result["data"])
-
-            # Visualize Agent
-            await _emit_progress(progress_hook, "visualize", "Đề xuất trực quan hóa dữ liệu...")
-            chart_rec = await _run_in_executor(
-                recommend_chart, question, generated_sql, result["data"], llm
-            )
-            chart_rec["routed_agent"] = route
-            result["visualization_recommendation"] = chart_rec
-
-            # NLG: diễn giải dữ liệu thành câu trả lời tự nhiên (raw rows vẫn ở `data`)
-            await _emit_progress(progress_hook, "nlg", "Tạo câu trả lời tự nhiên...")
-            result["answer"] = await _run_in_executor(
-                generate_natural_language_answer, question, result["data"], llm
-            )
-            result["error"] = None
-
-            if retries > 0:
-                logger.info("Retry lần %s thành công", retries)
-            await _emit_progress(progress_hook, "done", "Hoàn tất.")
-            return result
-
-        except Exception as e:
-            retries += 1
-            last_error_str = str(e)
-            logger.warning("Lỗi SQL (thử %s/%s): %s", retries, max_retries, last_error_str)
-
-            if retries >= max_retries:
-                await _emit_progress(progress_hook, "fallback", "SQL thất bại, chuyển sang Conversation Agent...")
-                fallback_msg = await _run_in_executor(
-                    conversation_response, question, last_error_str, llm
-                )
-                result["error"] = f"Thất bại sau {max_retries} lần: {last_error_str}"
-                result["answer"] = fallback_msg
-                result["current_agent"] = "conversation"
-                result["visualization_recommendation"] = {
-                    "chart_type": "conversation",
-                    "reason": "SQL failed, fallback to Conversation Agent",
-                }
-                return result
-
-            await asyncio.sleep(1)
-
-    return result
+    )
+    return final_state.get("result", result)
 
 
 def _clean_sql_output(sql: str) -> str:
