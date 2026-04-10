@@ -263,29 +263,29 @@ with st.sidebar:
 
     st.divider()
 
-    # Health check
-    health = _cached_health()
-    if health:
-        status = health.get("status", "unknown")
-        services = health.get("services", {})
-        if status == "ok":
-            st.success("🟢 Hệ thống hoạt động bình thường")
-        else:
-            st.warning(f"🟡 Hệ thống: {status}")
-        cols = st.columns(3)
-        for i, (svc, state) in enumerate(services.items()):
-            emoji = "✅" if state == "healthy" else "❌"
-            cols[i % 3].caption(f"{emoji} {svc}")
-        st.session_state.backend_healthy = True
-    else:
-        st.error("🔴 Backend không phản hồi")
-        st.session_state.backend_healthy = False
+    # # Health check
+    # health = _cached_health()
+    # if health:
+    #     status = health.get("status", "unknown")
+    #     services = health.get("services", {})
+    #     if status == "ok":
+    #         st.success("🟢 Hệ thống hoạt động bình thường")
+    #     else:
+    #         st.warning(f"🟡 Hệ thống: {status}")
+    #     cols = st.columns(3)
+    #     for i, (svc, state) in enumerate(services.items()):
+    #         emoji = "✅" if state == "healthy" else "❌"
+    #         cols[i % 3].caption(f"{emoji} {svc}")
+    #     st.session_state.backend_healthy = True
+    # else:
+    #     st.error("🔴 Backend không phản hồi")
+    #     st.session_state.backend_healthy = False
 
-    st.divider()
+    # st.divider()
 
     # Schema info
-    with st.expander("📂 Database Schema", expanded=False):
-        if st.button("Tải schema", key="load_schema_btn", width="stretch"):
+    with st.expander("Data Info", expanded=False):
+        if st.button("Reload", key="load_schema_btn", width="stretch"):
             _cached_schema.clear()
         schema = _cached_schema()
         if schema:
@@ -300,7 +300,7 @@ with st.sidebar:
                         st.markdown(f"- `{name}`")
             st.caption(f"Catalog: `{schema.get('catalog', '?')}` · Schema: `{schema.get('schema', '?')}`")
         else:
-            st.caption("Không lấy được schema.")
+            st.caption("Không tải được thông tin dữ liệu.")
 
     st.divider()
 
