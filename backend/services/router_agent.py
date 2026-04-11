@@ -13,6 +13,7 @@ import re
 from typing import Any
 
 from utils.logger import logger
+from utils.sql_validator import is_natural_language_write_request
 
 _ROUTER_LABELS = {"conversation", "sql", "visualize"}
 
@@ -98,6 +99,15 @@ def route_detail(question: str, llm: Any) -> dict[str, Any]:
     fallback_intent = rule_based_intent(question)
     default_scores = {"conversation": 0.0, "sql": 0.0, "visualize": 0.0}
     default_scores[fallback_intent] = 1.0
+
+    if is_natural_language_write_request(question):
+        logger.info("Router policy_block → intent=conversation (write request)")
+        return {
+            "intent": "conversation",
+            "scores": {"conversation": 1.0, "sql": 0.0, "visualize": 0.0},
+            "selected_agents": ["conversation"],
+            "routing_method": "policy_block",
+        }
 
     prompt = (
         "Bạn là Router Agent cho hệ thống phân tích dữ liệu trên Databricks.\n"
