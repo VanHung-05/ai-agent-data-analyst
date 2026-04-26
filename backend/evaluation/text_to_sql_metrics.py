@@ -113,6 +113,113 @@ def normalize_sql_for_match(sql: str) -> str:
     return s
 
 
+def _split_top_level_csv(expr: str) -> list[str]:
+    """Split biểu thức theo dấu phẩy ở mức top-level (không split trong hàm)."""
+    parts: list[str] = []
+    buff: list[str] = []
+    depth = 0
+    for ch in expr:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            part = "".join(buff).strip()
+            if part:
+                parts.append(part)
+            buff = []
+            continue
+        buff.append(ch)
+    tail = "".join(buff).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _sort_csv_clause_items(clause_body: str) -> str:
+    """Sort danh sách item trong SELECT/GROUP BY/ORDER BY để bỏ qua thứ tự."""
+    items = _split_top_level_csv(clause_body)
+    if len(items) <= 1:
+        return clause_body.strip()
+    return ", ".join(sorted(i.strip() for i in items if i.strip()))
+
+
+def _sort_where_predicates(where_body: str) -> str:
+    """
+    Canonical hóa WHERE theo kiểu nhẹ:
+    - Tách các predicate bởi AND ở top-level
+    - Sort để bỏ qua thứ tự điều kiện
+    """
+    # Tách theo AND ở mức top-level (không tách trong ngoặc đơn).
+    parts: list[str] = []
+    buff: list[str] = []
+    depth = 0
+    i = 0
+    s = where_body
+    n = len(s)
+    while i < n:
+        ch = s[i]
+        if ch == "(":
+            depth += 1
+            buff.append(ch)
+            i += 1
+            continue
+        if ch == ")":
+            depth = max(0, depth - 1)
+            buff.append(ch)
+            i += 1
+            continue
+
+        if depth == 0 and i + 3 <= n and s[i:i + 3].lower() == "and":
+            prev_ok = (i == 0) or (not (s[i - 1].isalnum() or s[i - 1] == "_"))
+            next_ok = (i + 3 == n) or (not (s[i + 3].isalnum() or s[i + 3] == "_"))
+            if prev_ok and next_ok:
+                piece = "".join(buff).strip()
+                if piece:
+                    parts.append(piece)
+                buff = []
+                i += 3
+                continue
+
+        buff.append(ch)
+        i += 1
+
+    tail = "".join(buff).strip()
+    if tail:
+        parts.append(tail)
+    if len(parts) <= 1:
+        return where_body.strip()
+    return " and ".join(sorted(parts))
+
+
+def canonicalize_sql_for_semantic_match(sql: str) -> str:
+    """
+    Canonical SQL cho semantic matching:
+    - Bỏ newline/tab/comment + normalize whitespace
+    - Bỏ table alias qualifier (a.col -> col)
+    - Bỏ ảnh hưởng thứ tự item trong SELECT/GROUP BY/ORDER BY và predicate AND của WHERE
+    """
+    norm = normalize_sql_for_match(sql)
+    clauses = _merge_clause_aliases(extract_clauses(norm))
+
+    canonical_clauses: dict[str, str] = {}
+    for clause, body in clauses.items():
+        clean_body = body.strip()
+        if clause in {"SELECT", "GROUP BY", "ORDER BY"}:
+            clean_body = _sort_csv_clause_items(clean_body)
+        elif clause == "WHERE":
+            clean_body = _sort_where_predicates(clean_body)
+        canonical_clauses[clause] = clean_body
+
+    ordered = ["SELECT", "FROM", "JOIN", "WHERE", "GROUP BY", "HAVING", "ORDER BY", "LIMIT", "UNION"]
+    chunks: list[str] = []
+    for kw in ordered:
+        val = canonical_clauses.get(kw, "")
+        if val:
+            chunks.append(f"{kw} {val}")
+    return " | ".join(chunks)
+
+
 # ---------------------------------------------------------------------------
 # Clause extraction for CM
 # ---------------------------------------------------------------------------
@@ -177,7 +284,10 @@ def compute_em(generated_sql: str | None, gold_sql: str) -> float:
     Đây là metric khắt khe nhất — khác 1 từ là trả về 0.
     """
     gen = generated_sql or ""
-    return float(normalize_sql_for_match(gen) == normalize_sql_for_match(gold_sql))
+    return float(
+        canonicalize_sql_for_semantic_match(gen)
+        == canonicalize_sql_for_semantic_match(gold_sql)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -191,8 +301,8 @@ def compute_cm(generated_sql: str | None, gold_sql: str) -> tuple[float, dict[st
     Không yêu cầu thứ tự clause giống nhau.
     """
     gen = generated_sql or ""
-    gen_clauses = _merge_clause_aliases(extract_clauses(gen))
-    gold_clauses = _merge_clause_aliases(extract_clauses(gold_sql))
+    gen_clauses = _merge_clause_aliases(extract_clauses(normalize_sql_for_match(gen)))
+    gold_clauses = _merge_clause_aliases(extract_clauses(normalize_sql_for_match(gold_sql)))
 
     detail: dict[str, float] = {}
     total_weight = 0.0
@@ -452,9 +562,13 @@ def compute_ex_with_detail(
     ]
 
     # -----------------------------------------------------------------------
-    # Strict EX (chỉ đúng khi col_names_match hoàn toàn)
+    # Strict EX theo execution semantics:
+    # - Không bắt buộc tên cột giống nhau (alias khác vẫn chấp nhận)
+    # - Cần map đủ toàn bộ cột gold và số lượng cột tương đương
+    # - Toàn bộ row phải khớp
     # -----------------------------------------------------------------------
-    ex_strict = 1.0 if (col_names_match and matched_count == gold_count == gen_count) else 0.0
+    full_column_coverage = (len(active_gold_cols) == len(gold_cols) == len(gen_cols))
+    ex_strict = 1.0 if (full_column_coverage and matched_count == gold_count == gen_count) else 0.0
 
     # -----------------------------------------------------------------------
     # [Ý tưởng 4] LIMIT-aware precision:
@@ -481,6 +595,9 @@ def compute_ex_with_detail(
         if (precision + recall) > 0 else 0.0
     )
     ex_partial = round(col_score * row_f1, 4)
+    if ex_strict == 1.0:
+        # Bất biến metric: strict đúng hoàn toàn thì partial phải = 1.0
+        ex_partial = 1.0
 
     if ex_strict < 1.0:
         diff["col_score"]           = round(col_score, 4)

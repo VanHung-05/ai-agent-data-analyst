@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import collections
 import json
 import random
 import time
@@ -61,6 +62,50 @@ class CaseResult:
     ex_partial: float | None = None   # Partial EX: F1-score dựa trên số dòng khớp
     ves: float | None = None
     execution_diff: dict[str, Any] = field(default_factory=dict)  # Chi tiết lỗi EX
+
+
+def classify_ex_failure(case: CaseResult) -> str:
+    """
+    Nhóm nguyên nhân EX fail để theo dõi quality theo vòng:
+    - alias_only: Khác alias/tên cột nhưng dữ liệu đã khớp
+    - limit_mismatch: Sai số dòng (thường do LIMIT/TOP-N), cột đã khớp
+    - semantic_mismatch: Sai ngữ nghĩa thực sự
+    """
+    if case.ex is None:
+        return "not_evaluated"
+    if case.ex == 1.0:
+        return "pass"
+
+    diff = case.execution_diff or {}
+    col_score = float(diff.get("col_score", 0.0) or 0.0)
+    row_f1 = float(diff.get("row_f1", 0.0) or 0.0)
+    row_count_generated = diff.get("row_count_generated")
+    row_count_gold = diff.get("row_count_gold")
+    rows_matched = diff.get("rows_matched")
+    missing_columns = diff.get("missing_columns") or []
+    extra_columns = diff.get("extra_columns") or []
+
+    # Nếu có thiếu/thừa cột thì không coi là alias-only.
+    if missing_columns or extra_columns:
+        # Trường hợp phổ biến: model trả thêm cột hoặc bỏ cột mô tả quan trọng.
+        return "semantic_mismatch"
+
+    # Alias-only: dữ liệu và tập dòng khớp hoàn toàn, khác ở label cột.
+    if col_score >= 0.999 and row_f1 >= 0.999:
+        return "alias_only"
+
+    # Limit mismatch: cột khớp tốt, nhưng số dòng lệch (thường do LIMIT N không đúng).
+    if (
+        col_score >= 0.999
+        and row_count_generated is not None
+        and row_count_gold is not None
+        and rows_matched is not None
+        and row_count_generated != row_count_gold
+        and rows_matched == min(row_count_generated, row_count_gold)
+    ):
+        return "limit_mismatch"
+
+    return "semantic_mismatch"
 
 
 class DatabricksSQLExecutor:
@@ -551,6 +596,58 @@ def build_summary(case_results: list[CaseResult]) -> dict[str, Any]:
             "VES_gte_1.0": (ves_mean or 0) >= 1.0,
         }
 
+    # Dashboard theo nhóm lỗi EX để theo dõi model quality theo intent.
+    ex_cases = [x for x in valid_cases if x.ex is not None]
+    ex_failed_cases = [x for x in ex_cases if x.ex == 0.0]
+    ex_failure_groups: collections.Counter[str] = collections.Counter()
+    missing_column_counter: collections.Counter[str] = collections.Counter()
+    ex_failure_case_ids: dict[str, list[str]] = {
+        "alias_only": [],
+        "limit_mismatch": [],
+        "semantic_mismatch": [],
+    }
+    for case in ex_failed_cases:
+        bucket = classify_ex_failure(case)
+        if bucket in ex_failure_case_ids:
+            ex_failure_groups[bucket] += 1
+            ex_failure_case_ids[bucket].append(case.sample_id)
+        for col in case.execution_diff.get("missing_columns", []) or []:
+            missing_column_counter[str(col)] += 1
+
+    ex_failure_dashboard: dict[str, Any] = {}
+    if has_ex:
+        ex_fail_total = len(ex_failed_cases)
+        ex_failure_dashboard = {
+            "ex_failed_total": ex_fail_total,
+            "by_group": {
+                "alias_only": {
+                    "count": ex_failure_groups.get("alias_only", 0),
+                    "rate_over_ex_failed": round(
+                        (ex_failure_groups.get("alias_only", 0) / ex_fail_total), 4
+                    ) if ex_fail_total else 0.0,
+                    "sample_ids": ex_failure_case_ids["alias_only"][:15],
+                },
+                "limit_mismatch": {
+                    "count": ex_failure_groups.get("limit_mismatch", 0),
+                    "rate_over_ex_failed": round(
+                        (ex_failure_groups.get("limit_mismatch", 0) / ex_fail_total), 4
+                    ) if ex_fail_total else 0.0,
+                    "sample_ids": ex_failure_case_ids["limit_mismatch"][:15],
+                },
+                "semantic_mismatch": {
+                    "count": ex_failure_groups.get("semantic_mismatch", 0),
+                    "rate_over_ex_failed": round(
+                        (ex_failure_groups.get("semantic_mismatch", 0) / ex_fail_total), 4
+                    ) if ex_fail_total else 0.0,
+                    "sample_ids": ex_failure_case_ids["semantic_mismatch"][:15],
+                },
+            },
+            "top_missing_columns": [
+                {"column": col, "count": cnt}
+                for col, cnt in missing_column_counter.most_common(10)
+            ],
+        }
+
     return {
         "total_samples": evaluated_total,
         "total_input_samples": total,
@@ -571,6 +668,7 @@ def build_summary(case_results: list[CaseResult]) -> dict[str, Any]:
             "EX_partial_mean": ex_partial_mean,
             "VES_mean": ves_mean,
         },
+        "ex_failure_dashboard": ex_failure_dashboard,
         "benchmark_target_pass": benchmark_target_pass,
         "targets": {
             "execution_success_rate_gte": 0.9,
@@ -679,6 +777,32 @@ def to_markdown_report(report_json: dict[str, Any]) -> str:
             lines.append("")
             for name, passed in btp.items():
                 lines.append(f"- {name}: **{'PASS' if passed else 'FAIL'}**")
+        lines.append("")
+
+    ex_dash = summary.get("ex_failure_dashboard") or {}
+    if ex_dash:
+        lines.append("## EX Failure Dashboard")
+        lines.append("")
+        lines.append(f"- EX failed total: **{ex_dash.get('ex_failed_total', 0)}**")
+        by_group = ex_dash.get("by_group") or {}
+        for key, label in (
+            ("alias_only", "Alias-only mismatch"),
+            ("limit_mismatch", "LIMIT/TOP-N mismatch"),
+            ("semantic_mismatch", "Semantic mismatch"),
+        ):
+            item = by_group.get(key) or {}
+            lines.append(
+                f"- {label}: **{item.get('count', 0)}** "
+                f"(rate: {item.get('rate_over_ex_failed', 0):.2%})"
+            )
+            ids = item.get("sample_ids") or []
+            if ids:
+                lines.append(f"  - Sample IDs: `{', '.join(ids[:10])}`")
+        top_missing = ex_dash.get("top_missing_columns") or []
+        if top_missing:
+            lines.append("- Top missing columns:")
+            for row in top_missing:
+                lines.append(f"  - `{row['column']}`: `{row['count']}`")
         lines.append("")
     lines.append("## Target Check")
     lines.append("")

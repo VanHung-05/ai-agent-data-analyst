@@ -8,7 +8,8 @@
       "RULE 13 - TIMEZONE:\n  a) Dữ liệu LỊCH SỬ (olist_*): KHÔNG dùng +7h khi GROUP BY / FILTER / ORDER BY timestamp - dữ liệu Brazil không phụ thuộc múi giờ VN. CHỈ dùng +7h khi SELECT timestamp để HIỂN THỊ cho người dùng cuối.\n  b) Dữ liệu REALTIME (bronze_rt_orders_sim): BẮT BUỘC dùng +7h khi filter theo ngày VN (WHERE DATE(...+7h) = DATE(CURRENT_TIMESTAMP()+7h)) và khi SELECT timestamp để hiển thị.\n  c) Realtime queries không filter date và không SELECT timestamp: +7h không cần thiết.",
       "RULE 12 - HUMAN READABLE: gold_sql ưu tiên SELECT tên danh mục, thành phố, bang thay vì chỉ surrogate keys.",
       "RULE 4 - SCHEMA: Chỉ dùng bảng và cột có trong schema. Không hallucinate.",
-      "FULL TABLE PATH: bronze_rt_orders_sim và ai_analyst.ecommerce.olist_orders dùng đầy đủ path khi cần."
+      "FULL TABLE PATH: bronze_rt_orders_sim và ai_analyst.ecommerce.olist_orders dùng đầy đủ path khi cần.",
+      "RULE 14a alignment: one-row aggregates use LIMIT 10 (not LIMIT 1)."
     ],
     "fix_statistics": {
       "total_cases": 100,
@@ -38,17 +39,17 @@
       "customer": 5,
       "order": 5
     },
-    "question_style": "few-shot guided (category-anchored)",
+    "question_style": "main_intent_only",
     "few_shot_transform": {
-      "applied": true,
+      "applied": false,
       "total_cases_transformed": 100,
-      "format": "[Few-shot guided] <example-intent> + original question + SQL constraints"
+      "format": "main intent only"
     }
   },
   "cases": [
     {
       "id": "basic_select_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê 10 đơn hàng đầu tiên trong hệ thống theo thời gian đặt hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Liệt kê 10 đơn hàng đầu tiên trong hệ thống theo thời gian đặt hàng?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT o.order_id, o.customer_id, o.order_status, o.order_purchase_timestamp FROM olist_orders o ORDER BY o.order_purchase_timestamp ASC LIMIT 10",
@@ -56,7 +57,7 @@
     },
     {
       "id": "basic_select_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Có bao nhiêu khách hàng trong hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Có bao nhiêu khách hàng trong hệ thống?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS total_customers FROM olist_customers LIMIT 10",
@@ -64,22 +65,22 @@
     },
     {
       "id": "basic_select_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê tất cả trạng thái đơn hàng có trong hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Liệt kê tất cả trạng thái đơn hàng có trong hệ thống?",
       "category": "basic_select",
       "difficulty": "easy",
-      "gold_sql": "SELECT DISTINCT o.order_status FROM olist_orders o ORDER BY o.order_status LIMIT 20",
+      "gold_sql": "SELECT DISTINCT order_status FROM olist_orders o UNION SELECT DISTINCT order_status FROM bronze_rt_orders_sim LIMIT 1000",
       "gold_sql_note": "| LIMIT added | alias/qualification aligned with system_prompt"
     },
     {
       "id": "basic_select_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê 10 sản phẩm có nhiều ảnh nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Liệt kê 10 sản phẩm có nhiều ảnh nhất?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT p.product_id, p.product_category_name, p.product_photos_qty FROM olist_products p ORDER BY p.product_photos_qty DESC LIMIT 10"
     },
     {
       "id": "basic_select_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê 10 người bán đầu tiên tại thành phố São Paulo (SP)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Liệt kê 10 người bán đầu tiên tại thành phố São Paulo (SP)?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT s.seller_id, s.seller_city, s.seller_state, s.seller_zip_code_prefix FROM olist_sellers s WHERE s.seller_city = 'sao paulo' AND s.seller_state = 'SP' LIMIT 10",
@@ -87,7 +88,7 @@
     },
     {
       "id": "basic_select_006",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Hiển thị thông tin 5 đánh giá có điểm thấp nhất (1 sao)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Hiển thị thông tin 5 đánh giá có điểm thấp nhất (1 sao)?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT r.review_id, r.order_id, r.review_score, r.review_comment_message, r.review_creation_date FROM olist_order_reviews r WHERE r.review_score = 1 LIMIT 5",
@@ -95,7 +96,7 @@
     },
     {
       "id": "basic_select_007",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Có bao nhiêu đơn hàng bị hủy trong hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Có bao nhiêu đơn hàng bị hủy trong hệ thống?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT COUNT(order_id) AS canceled_orders FROM olist_orders WHERE order_status = 'canceled' LIMIT 10",
@@ -103,7 +104,7 @@
     },
     {
       "id": "basic_select_008",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê tất cả phương thức thanh toán có trong hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Liệt kê tất cả phương thức thanh toán có trong hệ thống?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT DISTINCT p.payment_type FROM olist_order_payments p ORDER BY p.payment_type LIMIT 10",
@@ -111,7 +112,7 @@
     },
     {
       "id": "basic_select_009",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Hiển thị 10 đơn hàng gần đây nhất theo thời gian mua (dữ liệu lịch sử)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Hiển thị 10 đơn hàng gần đây nhất theo thời gian mua (dữ liệu lịch sử)?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT o.order_id, o.customer_id, o.order_status, o.order_purchase_timestamp FROM olist_orders o ORDER BY o.order_purchase_timestamp DESC LIMIT 10",
@@ -119,22 +120,22 @@
     },
     {
       "id": "basic_select_010",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê tất cả danh mục sản phẩm cùng tên tiếng Anh? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Liệt kê tất cả danh mục sản phẩm cùng tên tiếng Anh?",
       "category": "basic_select",
       "difficulty": "easy",
       "gold_sql": "SELECT t.product_category_name, t.product_category_name_english FROM product_category_name_translation t ORDER BY t.product_category_name_english LIMIT 100"
     },
     {
       "id": "aggregate_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Tổng doanh thu từ các đơn hàng đã giao thành công? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tổng doanh thu từ các đơn hàng đã giao thành công?",
       "category": "aggregate",
       "difficulty": "medium",
-      "gold_sql": "SELECT ROUND(SUM(oi.price), 2) AS total_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' LIMIT 1",
+      "gold_sql": "SELECT ROUND(SUM(oi.price), 2) AS total_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "aggregate_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Số đơn hàng theo từng trạng thái? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số đơn hàng theo từng trạng thái?",
       "category": "aggregate",
       "difficulty": "easy",
       "gold_sql": "SELECT o.order_status, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o GROUP BY o.order_status ORDER BY total_orders DESC LIMIT 20",
@@ -142,15 +143,15 @@
     },
     {
       "id": "aggregate_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Doanh thu trung bình mỗi đơn hàng là bao nhiêu? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Doanh thu trung bình mỗi đơn hàng là bao nhiêu?",
       "category": "aggregate",
       "difficulty": "medium",
-      "gold_sql": "SELECT ROUND(AVG(order_revenue), 2) AS avg_revenue_per_order FROM (SELECT oi.order_id, SUM(oi.price) AS order_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.order_id) subq LIMIT 1",
+      "gold_sql": "SELECT ROUND(AVG(order_revenue), 2) AS avg_revenue_per_order FROM (SELECT oi.order_id, SUM(oi.price) AS order_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.order_id) subq LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "aggregate_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Số đơn hàng theo tháng trong năm 2017? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số đơn hàng theo tháng trong năm 2017?",
       "category": "aggregate",
       "difficulty": "medium",
       "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o WHERE year(o.order_purchase_timestamp) = 2017 GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 20",
@@ -158,7 +159,7 @@
     },
     {
       "id": "aggregate_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Phương thức thanh toán nào phổ biến nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Phương thức thanh toán nào phổ biến nhất?",
       "category": "aggregate",
       "difficulty": "easy",
       "gold_sql": "SELECT p.payment_type, COUNT(*) AS total_transactions, ROUND(SUM(p.payment_value), 2) AS total_value FROM olist_order_payments p GROUP BY p.payment_type ORDER BY total_transactions DESC LIMIT 10",
@@ -166,7 +167,7 @@
     },
     {
       "id": "aggregate_006",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Doanh thu theo từng quý? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Doanh thu theo từng quý?",
       "category": "aggregate",
       "difficulty": "medium",
       "gold_sql": "SELECT year(o.order_purchase_timestamp) AS yr, quarter(o.order_purchase_timestamp) AS qtr, ROUND(SUM(oi.price), 2) AS quarterly_revenue, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY year(o.order_purchase_timestamp), quarter(o.order_purchase_timestamp) ORDER BY yr, qtr LIMIT 20",
@@ -174,7 +175,7 @@
     },
     {
       "id": "aggregate_007",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Tổng phí vận chuyển theo từng bang của khách hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tổng phí vận chuyển theo từng bang của khách hàng?",
       "category": "aggregate",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_state, ROUND(SUM(oi.freight_value), 2) AS total_freight FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_freight DESC LIMIT 30",
@@ -182,15 +183,15 @@
     },
     {
       "id": "aggregate_008",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Trung bình số sản phẩm (items) trong mỗi đơn hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Trung bình số sản phẩm (items) trong mỗi đơn hàng?",
       "category": "aggregate",
       "difficulty": "medium",
-      "gold_sql": "SELECT ROUND(AVG(item_count), 2) AS avg_items_per_order FROM (SELECT order_id, COUNT(order_item_id) AS item_count FROM olist_order_items GROUP BY order_id) subq LIMIT 1",
+      "gold_sql": "SELECT ROUND(AVG(item_count), 2) AS avg_items_per_order FROM (SELECT order_id, COUNT(order_item_id) AS item_count FROM olist_order_items GROUP BY order_id) subq LIMIT 10",
       "gold_sql_note": "Single row aggregate - LIMIT 1"
     },
     {
       "id": "aggregate_009",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Tổng số đánh giá theo từng điểm số (1-5)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tổng số đánh giá theo từng điểm số (1-5)?",
       "category": "aggregate",
       "difficulty": "easy",
       "gold_sql": "SELECT r.review_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r GROUP BY r.review_score ORDER BY r.review_score LIMIT 10",
@@ -198,7 +199,7 @@
     },
     {
       "id": "aggregate_010",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng doanh thu là bao nhiêu?\". Yêu cầu chính: Tổng doanh thu và phí vận chuyển theo năm? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tổng doanh thu và phí vận chuyển theo năm?",
       "category": "aggregate",
       "difficulty": "medium",
       "gold_sql": "SELECT year(o.order_purchase_timestamp) AS yr, ROUND(SUM(oi.price), 2) AS total_revenue, ROUND(SUM(oi.freight_value), 2) AS total_freight FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY year(o.order_purchase_timestamp) ORDER BY yr LIMIT 10",
@@ -206,14 +207,14 @@
     },
     {
       "id": "join_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Top 10 danh mục sản phẩm có doanh thu cao nhất (hiển thị tên tiếng Anh)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Top 10 danh mục sản phẩm có doanh thu cao nhất (hiển thị tên tiếng Anh)?",
       "category": "join",
       "difficulty": "medium",
       "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(SUM(oi.price), 2) AS revenue FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY t.product_category_name_english ORDER BY revenue DESC LIMIT 10"
     },
     {
       "id": "join_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Điểm đánh giá trung bình theo từng bang của khách hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Điểm đánh giá trung bình theo từng bang của khách hàng?",
       "category": "join",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY avg_score DESC LIMIT 30",
@@ -221,14 +222,14 @@
     },
     {
       "id": "join_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Người bán nào có doanh thu cao nhất? Cho biết thành phố và bang của họ? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Người bán nào có doanh thu cao nhất? Cho biết thành phố và bang của họ?",
       "category": "join",
       "difficulty": "medium",
       "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY total_revenue DESC LIMIT 10"
     },
     {
       "id": "join_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Thời gian giao hàng trung bình theo từng bang của khách hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Thời gian giao hàng trung bình theo từng bang của khách hàng?",
       "category": "join",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_state, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_delivery_days FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY c.customer_state ORDER BY avg_delivery_days DESC LIMIT 30",
@@ -236,21 +237,21 @@
     },
     {
       "id": "join_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Top 5 thành phố có nhiều người bán nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Top 5 thành phố có nhiều người bán nhất?",
       "category": "join",
       "difficulty": "easy",
       "gold_sql": "SELECT s.seller_city, s.seller_state, COUNT(s.seller_id) AS total_sellers FROM olist_sellers s GROUP BY s.seller_city, s.seller_state ORDER BY total_sellers DESC LIMIT 5"
     },
     {
       "id": "join_006",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Sản phẩm có giá bán cao nhất thuộc danh mục nào (tên tiếng Anh)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Sản phẩm có giá bán cao nhất thuộc danh mục nào (tên tiếng Anh)?",
       "category": "join",
       "difficulty": "medium",
       "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english, MAX(oi.price) AS max_item_price_brl FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY max_item_price_brl DESC LIMIT 5"
     },
     {
       "id": "join_007",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Số đơn hàng theo từng bang của khách hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số đơn hàng theo từng bang của khách hàng?",
       "category": "join",
       "difficulty": "easy",
       "gold_sql": "SELECT c.customer_state, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_orders DESC LIMIT 30",
@@ -258,7 +259,7 @@
     },
     {
       "id": "join_008",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Doanh thu theo từng bang của người bán? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Doanh thu theo từng bang của người bán?",
       "category": "join",
       "difficulty": "medium",
       "gold_sql": "SELECT s.seller_state, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE o.order_status = 'delivered' GROUP BY s.seller_state ORDER BY total_revenue DESC LIMIT 30",
@@ -266,14 +267,14 @@
     },
     {
       "id": "join_009",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Top 10 khách hàng có tổng chi tiêu cao nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Top 10 khách hàng có tổng chi tiêu cao nhất?",
       "category": "join",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_unique_id, c.customer_city, c.customer_state, ROUND(SUM(oi.price + oi.freight_value), 2) AS total_spent FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_unique_id, c.customer_city, c.customer_state ORDER BY total_spent DESC LIMIT 10"
     },
     {
       "id": "join_010",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Tổng giá trị thanh toán theo từng phương thức và bang khách hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tổng giá trị thanh toán theo từng phương thức và bang khách hàng?",
       "category": "join",
       "difficulty": "hard",
       "gold_sql": "SELECT c.customer_state, p.payment_type, ROUND(SUM(p.payment_value), 2) AS total_payment FROM olist_order_payments p JOIN olist_orders o ON p.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state, p.payment_type ORDER BY c.customer_state, total_payment DESC LIMIT 50",
@@ -281,23 +282,23 @@
     },
     {
       "id": "delivery_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Thời gian giao hàng trung bình theo bang?\". Yêu cầu chính: Tỷ lệ giao hàng trễ là bao nhiêu phần trăm? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tỷ lệ giao hàng trễ là bao nhiêu phần trăm?",
       "category": "delivery",
       "difficulty": "medium",
-      "gold_sql": "SELECT COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_deliveries, COUNT(*) AS total_delivered, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_percentage FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL LIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_deliveries, COUNT(*) AS total_delivered, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_percentage FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL LIMIT 10",
       "gold_sql_note": "Single row result - LIMIT 1"
     },
     {
       "id": "delivery_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Thời gian giao hàng trung bình theo bang?\". Yêu cầu chính: Thời gian giao hàng nhanh nhất và lâu nhất là bao nhiêu ngày? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Thời gian giao hàng nhanh nhất và lâu nhất là bao nhiêu ngày?",
       "category": "delivery",
       "difficulty": "medium",
-      "gold_sql": "SELECT MIN(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS min_delivery_days, MAX(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS max_delivery_days, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_delivery_days FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL LIMIT 1",
+      "gold_sql": "SELECT MIN(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS min_delivery_days, MAX(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS max_delivery_days, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_delivery_days FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "delivery_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Thời gian giao hàng trung bình theo bang?\". Yêu cầu chính: Tỷ lệ giao hàng trễ theo từng bang của khách hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tỷ lệ giao hàng trễ theo từng bang của khách hàng?",
       "category": "delivery",
       "difficulty": "hard",
       "gold_sql": "SELECT c.customer_state, COUNT(*) AS total_delivered, COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_count, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_pct FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY c.customer_state ORDER BY late_pct DESC LIMIT 30",
@@ -305,7 +306,7 @@
     },
     {
       "id": "delivery_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Thời gian giao hàng trung bình theo bang?\". Yêu cầu chính: Danh sách đơn hàng bị giao trễ nhiều nhất (chênh lệch ngày lớn nhất)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Danh sách đơn hàng bị giao trễ nhiều nhất (chênh lệch ngày lớn nhất)?",
       "category": "delivery",
       "difficulty": "medium",
       "gold_sql": "SELECT o.order_id, o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_mua_vn, o.order_estimated_delivery_date + INTERVAL 7 HOURS AS ngay_du_kien_vn, o.order_delivered_customer_date + INTERVAL 7 HOURS AS ngay_giao_thuc_te_vn, datediff(o.order_delivered_customer_date, o.order_estimated_delivery_date) AS days_late FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date > o.order_estimated_delivery_date ORDER BY days_late DESC LIMIT 10",
@@ -313,7 +314,7 @@
     },
     {
       "id": "delivery_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Thời gian giao hàng trung bình theo bang?\". Yêu cầu chính: Số đơn hàng giao trễ theo từng tháng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số đơn hàng giao trễ theo từng tháng?",
       "category": "delivery",
       "difficulty": "medium",
       "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(*) AS late_orders FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date > o.order_estimated_delivery_date GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 30",
@@ -321,37 +322,37 @@
     },
     {
       "id": "review_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Điểm đánh giá trung bình theo bang của khách hàng?\". Yêu cầu chính: Điểm đánh giá trung bình toàn hệ thống là bao nhiêu? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Điểm đánh giá trung bình toàn hệ thống là bao nhiêu?",
       "category": "review",
       "difficulty": "easy",
-      "gold_sql": "SELECT ROUND(AVG(r.review_score), 2) AS avg_review_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r LIMIT 1",
+      "gold_sql": "SELECT ROUND(AVG(r.review_score), 2) AS avg_review_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "review_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Điểm đánh giá trung bình theo bang của khách hàng?\". Yêu cầu chính: Tỷ lệ đánh giá tích cực (4-5 sao) là bao nhiêu? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tỷ lệ đánh giá tích cực (4-5 sao) là bao nhiêu?",
       "category": "review",
       "difficulty": "medium",
-      "gold_sql": "SELECT COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) AS positive_reviews, COUNT(*) AS total_reviews, ROUND(COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) * 100.0 / COUNT(*), 2) AS positive_pct FROM olist_order_reviews r LIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) AS positive_reviews, COUNT(*) AS total_reviews, ROUND(COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) * 100.0 / COUNT(*), 2) AS positive_pct FROM olist_order_reviews r LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "review_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Điểm đánh giá trung bình theo bang của khách hàng?\". Yêu cầu chính: Danh mục sản phẩm nào có điểm đánh giá trung bình cao nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Danh mục sản phẩm nào có điểm đánh giá trung bình cao nhất?",
       "category": "review",
       "difficulty": "hard",
       "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english HAVING COUNT(r.review_id) >= 50 ORDER BY avg_score DESC LIMIT 10"
     },
     {
       "id": "review_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Điểm đánh giá trung bình theo bang của khách hàng?\". Yêu cầu chính: Người bán nào có điểm đánh giá trung bình thấp nhất (với ít nhất 10 đơn)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Người bán nào có điểm đánh giá trung bình thấp nhất (với ít nhất 10 đơn)?",
       "category": "review",
       "difficulty": "hard",
       "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(DISTINCT r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT r.review_id) >= 10 ORDER BY avg_score ASC LIMIT 10"
     },
     {
       "id": "review_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Điểm đánh giá trung bình theo bang của khách hàng?\". Yêu cầu chính: Số đơn hàng có đánh giá tiêu cực (1-2 sao) theo từng tháng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số đơn hàng có đánh giá tiêu cực (1-2 sao) theo từng tháng?",
       "category": "review",
       "difficulty": "medium",
       "gold_sql": "SELECT date_format(r.review_creation_date, 'yyyy-MM') AS month, COUNT(r.review_id) AS negative_reviews FROM olist_order_reviews r WHERE r.review_score <= 2 GROUP BY date_format(r.review_creation_date, 'yyyy-MM') ORDER BY month LIMIT 30",
@@ -359,15 +360,15 @@
     },
     {
       "id": "payment_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Phương thức thanh toán nào phổ biến nhất?\". Yêu cầu chính: Tỷ lệ khách hàng mua trả góp khi dùng thẻ tín dụng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tỷ lệ khách hàng mua trả góp khi dùng thẻ tín dụng?",
       "category": "payment",
       "difficulty": "medium",
-      "gold_sql": "SELECT COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) AS installment_payments, COUNT(*) AS total_payments, ROUND(COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS installment_percentage FROM olist_order_payments p WHERE p.payment_type = 'credit_card' LIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) AS installment_payments, COUNT(*) AS total_payments, ROUND(COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS installment_percentage FROM olist_order_payments p WHERE p.payment_type = 'credit_card' LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "payment_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Phương thức thanh toán nào phổ biến nhất?\". Yêu cầu chính: Giá trị thanh toán trung bình theo từng phương thức thanh toán? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Giá trị thanh toán trung bình theo từng phương thức thanh toán?",
       "category": "payment",
       "difficulty": "easy",
       "gold_sql": "SELECT p.payment_type, ROUND(AVG(p.payment_value), 2) AS avg_payment, COUNT(*) AS total_transactions FROM olist_order_payments p GROUP BY p.payment_type ORDER BY avg_payment DESC LIMIT 10",
@@ -375,7 +376,7 @@
     },
     {
       "id": "payment_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Phương thức thanh toán nào phổ biến nhất?\". Yêu cầu chính: Phân bổ số kỳ trả góp của đơn hàng dùng thẻ tín dụng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Phân bổ số kỳ trả góp của đơn hàng dùng thẻ tín dụng?",
       "category": "payment",
       "difficulty": "medium",
       "gold_sql": "SELECT p.payment_installments, COUNT(*) AS total_orders, ROUND(SUM(p.payment_value), 2) AS total_value FROM olist_order_payments p WHERE p.payment_type = 'credit_card' GROUP BY p.payment_installments ORDER BY p.payment_installments LIMIT 30",
@@ -383,7 +384,7 @@
     },
     {
       "id": "payment_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Phương thức thanh toán nào phổ biến nhất?\". Yêu cầu chính: Tổng giá trị giao dịch theo phương thức thanh toán theo từng năm? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tổng giá trị giao dịch theo phương thức thanh toán theo từng năm?",
       "category": "payment",
       "difficulty": "medium",
       "gold_sql": "SELECT year(o.order_purchase_timestamp) AS yr, p.payment_type, ROUND(SUM(p.payment_value), 2) AS total_value FROM olist_order_payments p JOIN olist_orders o ON p.order_id = o.order_id GROUP BY year(o.order_purchase_timestamp), p.payment_type ORDER BY yr, total_value DESC LIMIT 30",
@@ -391,28 +392,28 @@
     },
     {
       "id": "payment_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Phương thức thanh toán nào phổ biến nhất?\". Yêu cầu chính: Đơn hàng có giá trị thanh toán cao nhất là bao nhiêu? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Đơn hàng có giá trị thanh toán cao nhất là bao nhiêu?",
       "category": "payment",
       "difficulty": "easy",
       "gold_sql": "SELECT p.order_id, ROUND(SUM(p.payment_value), 2) AS total_paid FROM olist_order_payments p GROUP BY p.order_id ORDER BY total_paid DESC LIMIT 10"
     },
     {
       "id": "geography_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 5 thành phố có nhiều người bán nhất?\". Yêu cầu chính: Top 10 thành phố có nhiều khách hàng nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Top 10 thành phố có nhiều khách hàng nhất?",
       "category": "geography",
       "difficulty": "easy",
       "gold_sql": "SELECT c.customer_city, c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS total_customers FROM olist_customers c GROUP BY c.customer_city, c.customer_state ORDER BY total_customers DESC LIMIT 10"
     },
     {
       "id": "geography_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 5 thành phố có nhiều người bán nhất?\". Yêu cầu chính: Bang nào có nhiều đơn hàng nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Bang nào có nhiều đơn hàng nhất?",
       "category": "geography",
       "difficulty": "easy",
       "gold_sql": "SELECT c.customer_state, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_orders DESC LIMIT 10"
     },
     {
       "id": "geography_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 5 thành phố có nhiều người bán nhất?\". Yêu cầu chính: Doanh thu theo từng bang của khách hàng, chỉ tính đơn đã giao? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Doanh thu theo từng bang của khách hàng, chỉ tính đơn đã giao?",
       "category": "geography",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS total_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_state ORDER BY total_revenue DESC LIMIT 30",
@@ -420,7 +421,7 @@
     },
     {
       "id": "geography_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 5 thành phố có nhiều người bán nhất?\". Yêu cầu chính: Bang nào có nhiều người bán nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Bang nào có nhiều người bán nhất?",
       "category": "geography",
       "difficulty": "easy",
       "gold_sql": "SELECT s.seller_state, COUNT(DISTINCT s.seller_id) AS total_sellers FROM olist_sellers s GROUP BY s.seller_state ORDER BY total_sellers DESC LIMIT 30",
@@ -428,30 +429,30 @@
     },
     {
       "id": "geography_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 5 thành phố có nhiều người bán nhất?\". Yêu cầu chính: Khoảng cách mua hàng xuyên bang: số đơn hàng mà khách và người bán ở khác bang? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Khoảng cách mua hàng xuyên bang: số đơn hàng mà khách và người bán ở khác bang?",
       "category": "geography",
       "difficulty": "hard",
-      "gold_sql": "SELECT COUNT(DISTINCT o.order_id) AS cross_state_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE c.customer_state <> s.seller_state LIMIT 1",
+      "gold_sql": "SELECT COUNT(DISTINCT o.order_id) AS cross_state_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE c.customer_state <> s.seller_state LIMIT 10",
       "gold_sql_note": "Single row - thêm LIMIT 1"
     },
     {
       "id": "realtime_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: Hôm nay có bao nhiêu đơn hàng mới? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Hôm nay có bao nhiêu đơn hàng mới?",
       "category": "realtime",
       "difficulty": "easy",
-      "gold_sql": "SELECT COUNT(order_id) AS total_orders_today FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) LIMIT 1",
+      "gold_sql": "SELECT COUNT(order_id) AS total_orders_today FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "realtime_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: Chi tiết 10 đơn hàng mới nhất vừa vào hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Chi tiết 10 đơn hàng mới nhất vừa vào hệ thống?",
       "category": "realtime",
       "difficulty": "easy",
       "gold_sql": "SELECT rt.order_id, rt.customer_id, rt.order_status, rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn FROM bronze_rt_orders_sim rt ORDER BY rt.order_purchase_timestamp DESC LIMIT 10"
     },
     {
       "id": "realtime_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: Thống kê số đơn hàng realtime hôm nay theo từng trạng thái? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Thống kê số đơn hàng realtime hôm nay theo từng trạng thái?",
       "category": "realtime",
       "difficulty": "easy",
       "gold_sql": "SELECT rt.order_status, COUNT(rt.order_id) AS so_luong_don FROM bronze_rt_orders_sim rt WHERE DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) GROUP BY rt.order_status ORDER BY so_luong_don DESC LIMIT 20",
@@ -459,7 +460,7 @@
     },
     {
       "id": "realtime_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: Đơn hàng mới hôm nay phân bổ theo từng giờ như thế nào? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Đơn hàng mới hôm nay phân bổ theo từng giờ như thế nào?",
       "category": "realtime",
       "difficulty": "medium",
       "gold_sql": "SELECT HOUR(order_purchase_timestamp + INTERVAL 7 HOURS) AS gio_vn, COUNT(order_id) AS so_don FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) GROUP BY HOUR(order_purchase_timestamp + INTERVAL 7 HOURS) ORDER BY gio_vn LIMIT 24",
@@ -467,7 +468,7 @@
     },
     {
       "id": "realtime_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: So sánh số đơn hàng hôm nay và hôm qua? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "So sánh số đơn hàng hôm nay và hôm qua?",
       "category": "realtime",
       "difficulty": "medium",
       "gold_sql": "SELECT CASE WHEN DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) THEN 'Hôm nay' WHEN DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY) THEN 'Hôm qua' ELSE 'Khác' END AS ngay, COUNT(order_id) AS tong_don_hang FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY) GROUP BY ngay ORDER BY ngay DESC LIMIT 5",
@@ -475,14 +476,14 @@
     },
     {
       "id": "realtime_006",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: Khách hàng ở bang nào mua nhiều nhất trong dữ liệu realtime? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Khách hàng ở bang nào mua nhiều nhất trong dữ liệu realtime?",
       "category": "realtime",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_state, COUNT(rt.order_id) AS total_rt_orders FROM bronze_rt_orders_sim rt JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_rt_orders DESC LIMIT 5"
     },
     {
       "id": "realtime_007",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: So sánh tổng số đơn hàng lịch sử và đơn hàng realtime? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "So sánh tổng số đơn hàng lịch sử và đơn hàng realtime?",
       "category": "realtime",
       "difficulty": "medium",
       "gold_sql": "SELECT 'Lịch sử (2016-2018)' AS nguon_du_lieu, COUNT(order_id) AS so_luong_don FROM ai_analyst.ecommerce.olist_orders UNION ALL SELECT 'Realtime (2026)' AS nguon_du_lieu, COUNT(order_id) AS so_luong_don FROM bronze_rt_orders_sim LIMIT 2",
@@ -490,29 +491,29 @@
     },
     {
       "id": "realtime_008",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: Thành phố nào có nhiều đơn hàng realtime nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Thành phố nào có nhiều đơn hàng realtime nhất?",
       "category": "realtime",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_city, c.customer_state, COUNT(rt.order_id) AS so_don_moi FROM bronze_rt_orders_sim rt JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id GROUP BY c.customer_city, c.customer_state ORDER BY so_don_moi DESC LIMIT 10"
     },
     {
       "id": "realtime_009",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: Thời điểm đơn hàng mới nhất trong hệ thống realtime là khi nào? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Thời điểm đơn hàng mới nhất trong hệ thống realtime là khi nào?",
       "category": "realtime",
       "difficulty": "easy",
-      "gold_sql": "SELECT MAX(order_purchase_timestamp + INTERVAL 7 HOURS) AS latest_order_date_vn, COUNT(order_id) AS tong_don_hom_nay FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) LIMIT 1",
+      "gold_sql": "SELECT MAX(order_purchase_timestamp + INTERVAL 7 HOURS) AS latest_order_date_vn, COUNT(order_id) AS tong_don_hom_nay FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "realtime_010",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Hôm nay có bao nhiêu đơn hàng mới?\". Yêu cầu chính: Liệt kê toàn bộ đơn hàng hôm nay với thời gian theo giờ Việt Nam? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Liệt kê toàn bộ đơn hàng hôm nay với thời gian theo giờ Việt Nam?",
       "category": "realtime",
       "difficulty": "medium",
       "gold_sql": "SELECT rt.order_id, rt.customer_id, rt.order_status, DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) AS ngay_vn, HOUR(rt.order_purchase_timestamp + INTERVAL 7 HOURS) AS gio_vn, rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn FROM bronze_rt_orders_sim rt WHERE DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) ORDER BY rt.order_purchase_timestamp DESC LIMIT 200"
     },
     {
       "id": "subquery_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)?\". Yêu cầu chính: Khách hàng nào đã đặt hơn 3 đơn hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Khách hàng nào đã đặt hơn 3 đơn hàng?",
       "category": "subquery",
       "difficulty": "hard",
       "gold_sql": "SELECT c.customer_unique_id, c.customer_city, c.customer_state, t.order_count FROM (SELECT o.customer_id, COUNT(DISTINCT o.order_id) AS order_count FROM olist_orders o GROUP BY o.customer_id HAVING COUNT(DISTINCT o.order_id) > 3) t JOIN olist_customers c ON t.customer_id = c.customer_id ORDER BY t.order_count DESC LIMIT 20",
@@ -520,36 +521,36 @@
     },
     {
       "id": "subquery_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)?\". Yêu cầu chính: Danh mục sản phẩm nào có số lượng sản phẩm nhiều nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Danh mục sản phẩm nào có số lượng sản phẩm nhiều nhất?",
       "category": "subquery",
       "difficulty": "medium",
       "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(p.product_id) AS product_count FROM olist_products p LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY product_count DESC LIMIT 10"
     },
     {
       "id": "subquery_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)?\". Yêu cầu chính: Đơn hàng nào có nhiều sản phẩm nhất (top 5)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Đơn hàng nào có nhiều sản phẩm nhất (top 5)?",
       "category": "subquery",
       "difficulty": "medium",
       "gold_sql": "SELECT oi.order_id, COUNT(oi.order_item_id) AS item_count, ROUND(SUM(oi.price), 2) AS total_value FROM olist_order_items oi GROUP BY oi.order_id ORDER BY item_count DESC LIMIT 5"
     },
     {
       "id": "subquery_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)?\". Yêu cầu chính: Người bán nào chưa từng bị đánh giá dưới 3 sao? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Người bán nào chưa từng bị đánh giá dưới 3 sao?",
       "category": "subquery",
       "difficulty": "hard",
       "gold_sql": "SELECT DISTINCT oi.seller_id, s.seller_city, s.seller_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE oi.seller_id NOT IN (SELECT DISTINCT oi2.seller_id FROM olist_order_items oi2 JOIN olist_orders o ON oi2.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE r.review_score < 3) LIMIT 20"
     },
     {
       "id": "subquery_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)?\". Yêu cầu chính: Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)?",
       "category": "subquery",
       "difficulty": "medium",
-      "gold_sql": "SELECT s.tong_don_toan_he_thong FROM (SELECT (SELECT COUNT(o.order_id) FROM ai_analyst.ecommerce.olist_orders o) + (SELECT COUNT(rt.order_id) FROM bronze_rt_orders_sim rt) AS tong_don_toan_he_thong) s LIMIT 1",
+      "gold_sql": "SELECT s.tong_don_toan_he_thong FROM (SELECT (SELECT COUNT(o.order_id) FROM ai_analyst.ecommerce.olist_orders o) + (SELECT COUNT(rt.order_id) FROM bronze_rt_orders_sim rt) AS tong_don_toan_he_thong) s LIMIT 10",
       "gold_sql_note": "Single row - LIMIT 1, full path cho olist_orders | alias/qualification aligned with system_prompt"
     },
     {
       "id": "window_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Doanh thu tích lũy theo tháng trong năm 2017?\". Yêu cầu chính: Xếp hạng doanh thu theo bang của khách hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Xếp hạng doanh thu theo bang của khách hàng?",
       "category": "window_function",
       "difficulty": "hard",
       "gold_sql": "SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS total_revenue, RANK() OVER (ORDER BY SUM(oi.price) DESC) AS revenue_rank FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_state ORDER BY revenue_rank LIMIT 30",
@@ -557,7 +558,7 @@
     },
     {
       "id": "window_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Doanh thu tích lũy theo tháng trong năm 2017?\". Yêu cầu chính: Doanh thu tích lũy theo tháng trong năm 2017? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Doanh thu tích lũy theo tháng trong năm 2017?",
       "category": "window_function",
       "difficulty": "hard",
       "gold_sql": "SELECT subq.month, subq.monthly_revenue, SUM(subq.monthly_revenue) OVER (ORDER BY subq.month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_revenue FROM (SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, ROUND(SUM(oi.price), 2) AS monthly_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' AND year(o.order_purchase_timestamp) = 2017 GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')) subq ORDER BY subq.month LIMIT 20",
@@ -565,14 +566,14 @@
     },
     {
       "id": "window_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Doanh thu tích lũy theo tháng trong năm 2017?\". Yêu cầu chính: Xếp hạng người bán theo doanh thu trong từng bang? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Xếp hạng người bán theo doanh thu trong từng bang?",
       "category": "window_function",
       "difficulty": "hard",
       "gold_sql": "SELECT s.seller_state, oi.seller_id, ROUND(SUM(oi.price), 2) AS revenue, RANK() OVER (PARTITION BY s.seller_state ORDER BY SUM(oi.price) DESC) AS rank_in_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY s.seller_state, oi.seller_id ORDER BY s.seller_state, rank_in_state LIMIT 30"
     },
     {
       "id": "complex_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top danh mục theo doanh thu và tăng trưởng?\". Yêu cầu chính: Phân tích RFM: khách hàng mua lần cuối khi nào, mua bao nhiêu lần, chi tiêu tổng bao nhiêu? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Phân tích RFM: khách hàng mua lần cuối khi nào, mua bao nhiêu lần, chi tiêu tổng bao nhiêu?",
       "category": "complex",
       "difficulty": "hard",
       "gold_sql": "SELECT c.customer_unique_id, MAX(o.order_purchase_timestamp + INTERVAL 7 HOURS) AS last_purchase_date_vn, COUNT(DISTINCT o.order_id) AS frequency, ROUND(SUM(oi.price), 2) AS monetary FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id JOIN olist_order_items oi ON o.order_id = oi.order_id WHERE o.order_status = 'delivered' GROUP BY c.customer_unique_id ORDER BY monetary DESC LIMIT 20",
@@ -580,7 +581,7 @@
     },
     {
       "id": "complex_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top danh mục theo doanh thu và tăng trưởng?\". Yêu cầu chính: Phân tích tương quan giữa số kỳ trả góp và điểm đánh giá trung bình? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Phân tích tương quan giữa số kỳ trả góp và điểm đánh giá trung bình?",
       "category": "complex",
       "difficulty": "hard",
       "gold_sql": "SELECT p.payment_installments, ROUND(AVG(r.review_score), 2) AS avg_review_score, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_order_payments p JOIN olist_orders o ON p.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE p.payment_type = 'credit_card' GROUP BY p.payment_installments ORDER BY p.payment_installments LIMIT 30",
@@ -588,14 +589,14 @@
     },
     {
       "id": "complex_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top danh mục theo doanh thu và tăng trưởng?\". Yêu cầu chính: Top 5 danh mục sản phẩm có tỷ lệ giao trễ cao nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Top 5 danh mục sản phẩm có tỷ lệ giao trễ cao nhất?",
       "category": "complex",
       "difficulty": "hard",
       "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(*) AS total_delivered, COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_count, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_pct FROM olist_orders o JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY t.product_category_name_english HAVING COUNT(*) >= 50 ORDER BY late_pct DESC LIMIT 5"
     },
     {
       "id": "complex_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top danh mục theo doanh thu và tăng trưởng?\". Yêu cầu chính: Danh mục sản phẩm nào có cả doanh thu cao lẫn điểm đánh giá tốt (>= 4)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Danh mục sản phẩm nào có cả doanh thu cao lẫn điểm đánh giá tốt (>= 4)?",
       "category": "complex",
       "difficulty": "hard",
       "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(SUM(oi.price), 2) AS revenue, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE o.order_status = 'delivered' GROUP BY t.product_category_name_english HAVING AVG(r.review_score) >= 4 ORDER BY revenue DESC LIMIT 10",
@@ -603,28 +604,28 @@
     },
     {
       "id": "complex_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top danh mục theo doanh thu và tăng trưởng?\". Yêu cầu chính: Seller có tỉ lệ đơn hàng bị hủy cao nhất (ít nhất 20 đơn)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Seller có tỉ lệ đơn hàng bị hủy cao nhất (ít nhất 20 đơn)?",
       "category": "complex",
       "difficulty": "hard",
       "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT o.order_id) AS total_orders, COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) AS canceled_orders, ROUND(COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) * 100.0 / COUNT(DISTINCT o.order_id), 2) AS cancel_rate FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT o.order_id) >= 20 ORDER BY cancel_rate DESC LIMIT 10"
     },
     {
       "id": "product_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Sản phẩm / mặt hàng nào có giá bán cao nhất?\". Yêu cầu chính: Top 10 sản phẩm bán chạy nhất theo số lượng đơn hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Top 10 sản phẩm bán chạy nhất theo số lượng đơn hàng?",
       "category": "product",
       "difficulty": "medium",
       "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english, COUNT(oi.order_item_id) AS total_sold FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY total_sold DESC LIMIT 10"
     },
     {
       "id": "product_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Sản phẩm / mặt hàng nào có giá bán cao nhất?\". Yêu cầu chính: Danh mục sản phẩm nào có trọng lượng trung bình cao nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Danh mục sản phẩm nào có trọng lượng trung bình cao nhất?",
       "category": "product",
       "difficulty": "medium",
       "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(p.product_weight_g), 1) AS avg_weight_g, COUNT(p.product_id) AS product_count FROM olist_products p JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name WHERE p.product_weight_g IS NOT NULL GROUP BY t.product_category_name_english ORDER BY avg_weight_g DESC LIMIT 10"
     },
     {
       "id": "product_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Sản phẩm / mặt hàng nào có giá bán cao nhất?\". Yêu cầu chính: Danh mục có số lượng sản phẩm dưới 10 là những danh mục nào? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Danh mục có số lượng sản phẩm dưới 10 là những danh mục nào?",
       "category": "product",
       "difficulty": "medium",
       "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(p.product_id) AS product_count FROM olist_products p JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english HAVING COUNT(p.product_id) < 10 ORDER BY product_count ASC LIMIT 30",
@@ -632,7 +633,7 @@
     },
     {
       "id": "product_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Sản phẩm / mặt hàng nào có giá bán cao nhất?\". Yêu cầu chính: Tương quan giữa số ảnh sản phẩm và giá bán trung bình? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tương quan giữa số ảnh sản phẩm và giá bán trung bình?",
       "category": "product",
       "difficulty": "medium",
       "gold_sql": "SELECT p.product_photos_qty, ROUND(AVG(oi.price), 2) AS avg_price, COUNT(DISTINCT p.product_id) AS product_count FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id WHERE p.product_photos_qty IS NOT NULL GROUP BY p.product_photos_qty ORDER BY p.product_photos_qty LIMIT 30",
@@ -640,49 +641,49 @@
     },
     {
       "id": "product_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Sản phẩm / mặt hàng nào có giá bán cao nhất?\". Yêu cầu chính: Danh mục sản phẩm nào có phí vận chuyển trung bình cao nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Danh mục sản phẩm nào có phí vận chuyển trung bình cao nhất?",
       "category": "product",
       "difficulty": "medium",
       "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(oi.freight_value), 2) AS avg_freight FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY avg_freight DESC LIMIT 10"
     },
     {
       "id": "seller_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Người bán nào có doanh thu cao nhất?\". Yêu cầu chính: Người bán nào có số lượng đơn hàng nhiều nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Người bán nào có số lượng đơn hàng nhiều nhất?",
       "category": "seller",
       "difficulty": "medium",
       "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY total_orders DESC LIMIT 10"
     },
     {
       "id": "seller_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Người bán nào có doanh thu cao nhất?\". Yêu cầu chính: Người bán nào bán nhiều danh mục sản phẩm nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Người bán nào bán nhiều danh mục sản phẩm nhất?",
       "category": "seller",
       "difficulty": "medium",
       "gold_sql": "SELECT oi.seller_id, s.seller_city, COUNT(DISTINCT p.product_category_name) AS category_count FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_products p ON oi.product_id = p.product_id GROUP BY oi.seller_id, s.seller_city ORDER BY category_count DESC LIMIT 10"
     },
     {
       "id": "seller_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Người bán nào có doanh thu cao nhất?\". Yêu cầu chính: Tỷ lệ đơn hàng giao trễ của từng người bán (top 10 tệ nhất, ít nhất 50 đơn)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tỷ lệ đơn hàng giao trễ của từng người bán (top 10 tệ nhất, ít nhất 50 đơn)?",
       "category": "seller",
       "difficulty": "hard",
       "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(*) AS total_orders, COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_orders, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_rate FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(*) >= 50 ORDER BY late_rate DESC LIMIT 10"
     },
     {
       "id": "seller_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Người bán nào có doanh thu cao nhất?\". Yêu cầu chính: Doanh thu trung bình mỗi đơn hàng của từng người bán? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Doanh thu trung bình mỗi đơn hàng của từng người bán?",
       "category": "seller",
       "difficulty": "medium",
       "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(SUM(oi.price) / COUNT(DISTINCT oi.order_id), 2) AS avg_revenue_per_order FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY avg_revenue_per_order DESC LIMIT 10"
     },
     {
       "id": "seller_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Người bán nào có doanh thu cao nhất?\". Yêu cầu chính: Seller mới (chỉ có đơn trong năm 2018) là những ai? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Seller mới (chỉ có đơn trong năm 2018) là những ai?",
       "category": "seller",
       "difficulty": "hard",
       "gold_sql": "SELECT DISTINCT oi.seller_id, s.seller_city, s.seller_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE year(o.order_purchase_timestamp) = 2018 AND oi.seller_id NOT IN (SELECT DISTINCT oi2.seller_id FROM olist_order_items oi2 JOIN olist_orders o2 ON oi2.order_id = o2.order_id WHERE year(o2.order_purchase_timestamp) < 2018) LIMIT 20"
     },
     {
       "id": "trend_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Số đơn hàng theo tháng trong năm 2017?\". Yêu cầu chính: Xu hướng tăng trưởng đơn hàng theo từng tháng từ 2016-2018? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Xu hướng tăng trưởng đơn hàng theo từng tháng từ 2016-2018?",
       "category": "trend",
       "difficulty": "medium",
       "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 40",
@@ -690,7 +691,7 @@
     },
     {
       "id": "trend_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Số đơn hàng theo tháng trong năm 2017?\". Yêu cầu chính: Tỷ lệ đơn hàng được giao thành công theo từng tháng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tỷ lệ đơn hàng được giao thành công theo từng tháng?",
       "category": "trend",
       "difficulty": "medium",
       "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(*) AS total_orders, COUNT(CASE WHEN o.order_status = 'delivered' THEN 1 END) AS delivered_orders, ROUND(COUNT(CASE WHEN o.order_status = 'delivered' THEN 1 END) * 100.0 / COUNT(*), 2) AS delivery_rate FROM olist_orders o GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 40",
@@ -698,7 +699,7 @@
     },
     {
       "id": "trend_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Số đơn hàng theo tháng trong năm 2017?\". Yêu cầu chính: Xu hướng điểm đánh giá trung bình theo từng quý? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Xu hướng điểm đánh giá trung bình theo từng quý?",
       "category": "trend",
       "difficulty": "medium",
       "gold_sql": "SELECT year(r.review_creation_date) AS yr, quarter(r.review_creation_date) AS qtr, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r GROUP BY year(r.review_creation_date), quarter(r.review_creation_date) ORDER BY yr, qtr LIMIT 20",
@@ -706,7 +707,7 @@
     },
     {
       "id": "trend_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Số đơn hàng theo tháng trong năm 2017?\". Yêu cầu chính: Doanh thu theo từng tháng trong năm 2018? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Doanh thu theo từng tháng trong năm 2018?",
       "category": "trend",
       "difficulty": "medium",
       "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, ROUND(SUM(oi.price), 2) AS monthly_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' AND year(o.order_purchase_timestamp) = 2018 GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 20",
@@ -714,7 +715,7 @@
     },
     {
       "id": "trend_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Số đơn hàng theo tháng trong năm 2017?\". Yêu cầu chính: Số lượng đánh giá theo từng ngày trong tháng 12/2017? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số lượng đánh giá theo từng ngày trong tháng 12/2017?",
       "category": "trend",
       "difficulty": "medium",
       "gold_sql": "SELECT DATE(r.review_creation_date) AS review_date, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r WHERE year(r.review_creation_date) = 2017 AND month(r.review_creation_date) = 12 GROUP BY DATE(r.review_creation_date) ORDER BY review_date LIMIT 31",
@@ -722,7 +723,7 @@
     },
     {
       "id": "join_011",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Top 10 danh mục sản phẩm có doanh thu cao nhất?\". Yêu cầu chính: Sản phẩm nào được bán với giá cao nhất? Hiển thị danh mục và giá bán. (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Sản phẩm nào được bán với giá cao nhất? Hiển thị danh mục và giá bán.",
       "category": "join",
       "difficulty": "medium",
       "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english, MAX(oi.price) AS max_price_brl FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY max_price_brl DESC LIMIT 10",
@@ -730,7 +731,7 @@
     },
     {
       "id": "seller_006",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Người bán nào có doanh thu cao nhất?\". Yêu cầu chính: Người bán nào có phí vận chuyển trung bình thấp nhất (với ít nhất 50 đơn hàng delivered)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Người bán nào có phí vận chuyển trung bình thấp nhất (với ít nhất 50 đơn hàng delivered)?",
       "category": "seller",
       "difficulty": "medium",
       "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(oi.freight_value), 2) AS avg_freight, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT oi.order_id) >= 50 ORDER BY avg_freight ASC LIMIT 10",
@@ -738,7 +739,7 @@
     },
     {
       "id": "customer_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Khách hàng nào đã đặt hơn 3 đơn hàng?\". Yêu cầu chính: Phân bổ khách hàng theo bang? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Phân bổ khách hàng theo bang?",
       "category": "customer",
       "difficulty": "easy",
       "gold_sql": "SELECT c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS total_customers FROM olist_customers c GROUP BY c.customer_state ORDER BY total_customers DESC LIMIT 30",
@@ -746,22 +747,22 @@
     },
     {
       "id": "customer_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Khách hàng nào đã đặt hơn 3 đơn hàng?\". Yêu cầu chính: Tỷ lệ khách hàng quay lại mua hơn 1 lần? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tỷ lệ khách hàng quay lại mua hơn 1 lần?",
       "category": "customer",
       "difficulty": "hard",
-      "gold_sql": "SELECT COUNT(CASE WHEN order_count > 1 THEN 1 END) AS repeat_customers, COUNT(*) AS total_customers, ROUND(COUNT(CASE WHEN order_count > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS repeat_rate FROM (SELECT c.customer_unique_id, COUNT(DISTINCT o.order_id) AS order_count FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) t LIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN order_count > 1 THEN 1 END) AS repeat_customers, COUNT(*) AS total_customers, ROUND(COUNT(CASE WHEN order_count > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS repeat_rate FROM (SELECT c.customer_unique_id, COUNT(DISTINCT o.order_id) AS order_count FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) t LIMIT 10",
       "gold_sql_note": "Single row - LIMIT 1"
     },
     {
       "id": "customer_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Khách hàng nào đã đặt hơn 3 đơn hàng?\". Yêu cầu chính: Thành phố nào có tổng chi tiêu khách hàng cao nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Thành phố nào có tổng chi tiêu khách hàng cao nhất?",
       "category": "customer",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_city, c.customer_state, ROUND(SUM(oi.price + oi.freight_value), 2) AS total_spent FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_city, c.customer_state ORDER BY total_spent DESC LIMIT 10"
     },
     {
       "id": "customer_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Khách hàng nào đã đặt hơn 3 đơn hàng?\". Yêu cầu chính: Tháng nào trong năm 2017 có nhiều khách hàng mới nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tháng nào trong năm 2017 có nhiều khách hàng mới nhất?",
       "category": "customer",
       "difficulty": "hard",
       "gold_sql": "SELECT date_format(first_purchase, 'yyyy-MM') AS month, COUNT(*) AS new_customers FROM (SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) t WHERE year(first_purchase) = 2017 GROUP BY date_format(first_purchase, 'yyyy-MM') ORDER BY month LIMIT 20",
@@ -769,14 +770,14 @@
     },
     {
       "id": "customer_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Khách hàng nào đã đặt hơn 3 đơn hàng?\". Yêu cầu chính: Khách hàng ở bang nào có thời gian chờ giao hàng trung bình lâu nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Khách hàng ở bang nào có thời gian chờ giao hàng trung bình lâu nhất?",
       "category": "customer",
       "difficulty": "medium",
       "gold_sql": "SELECT c.customer_state, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_wait_days FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY c.customer_state ORDER BY avg_wait_days DESC LIMIT 10"
     },
     {
       "id": "order_001",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Có bao nhiêu đơn hàng bị hủy?\". Yêu cầu chính: Số đơn hàng theo từng trạng thái trong năm 2017? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số đơn hàng theo từng trạng thái trong năm 2017?",
       "category": "order",
       "difficulty": "easy",
       "gold_sql": "SELECT o.order_status, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o WHERE year(o.order_purchase_timestamp) = 2017 GROUP BY o.order_status ORDER BY total_orders DESC LIMIT 10",
@@ -784,23 +785,23 @@
     },
     {
       "id": "order_002",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Có bao nhiêu đơn hàng bị hủy?\". Yêu cầu chính: Số đơn hàng có nhiều hơn 5 sản phẩm? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số đơn hàng có nhiều hơn 5 sản phẩm?",
       "category": "order",
       "difficulty": "medium",
-      "gold_sql": "SELECT COUNT(*) AS orders_with_5plus_items FROM (SELECT order_id FROM olist_order_items GROUP BY order_id HAVING COUNT(order_item_id) > 5) subq LIMIT 1",
+      "gold_sql": "SELECT COUNT(*) AS orders_with_5plus_items FROM (SELECT order_id FROM olist_order_items GROUP BY order_id HAVING COUNT(order_item_id) > 5) subq LIMIT 10",
       "gold_sql_note": "Single row - LIMIT 1"
     },
     {
       "id": "order_003",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Có bao nhiêu đơn hàng bị hủy?\". Yêu cầu chính: Tỷ lệ đơn hàng được duyệt (approved) trong vòng 1 ngày sau khi đặt? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Tỷ lệ đơn hàng được duyệt (approved) trong vòng 1 ngày sau khi đặt?",
       "category": "order",
       "difficulty": "medium",
-      "gold_sql": "SELECT COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) AS fast_approved, COUNT(*) AS total_with_approval, ROUND(COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS fast_approval_rate FROM olist_orders o WHERE o.order_approved_at IS NOT NULL LIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) AS fast_approved, COUNT(*) AS total_with_approval, ROUND(COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS fast_approval_rate FROM olist_orders o WHERE o.order_approved_at IS NOT NULL LIMIT 10",
       "gold_sql_note": " | LIMIT added"
     },
     {
       "id": "order_004",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Có bao nhiêu đơn hàng bị hủy?\". Yêu cầu chính: Đơn hàng nào có khoảng cách giữa ngày đặt và ngày giao dài nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Đơn hàng nào có khoảng cách giữa ngày đặt và ngày giao dài nhất?",
       "category": "order",
       "difficulty": "medium",
       "gold_sql": "SELECT o.order_id, o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn, o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn, datediff(o.order_delivered_customer_date, o.order_purchase_timestamp) AS total_days FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL ORDER BY total_days DESC LIMIT 10",
@@ -808,10 +809,10 @@
     },
     {
       "id": "order_005",
-      "question": "[Few-shot guided] Ví dụ tương tự: \"Có bao nhiêu đơn hàng bị hủy?\". Yêu cầu chính: Số đơn hàng trung bình mỗi ngày trong năm 2017? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "question": "Số đơn hàng trung bình mỗi ngày trong năm 2017?",
       "category": "order",
       "difficulty": "medium",
-      "gold_sql": "SELECT ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(order_purchase_timestamp)), 1) AS avg_orders_per_day FROM olist_orders WHERE year(order_purchase_timestamp) = 2017 LIMIT 1",
+      "gold_sql": "SELECT ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(order_purchase_timestamp)), 1) AS avg_orders_per_day FROM olist_orders WHERE year(order_purchase_timestamp) = 2017 LIMIT 10",
       "gold_sql_note": "Single row - LIMIT 1"
     }
   ]

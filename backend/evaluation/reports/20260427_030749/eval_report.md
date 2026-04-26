@@ -1,16 +1,16 @@
 # SQL Evaluation Report
 
-- GeneratedAt: 2026-04-25T16:17:27.157928+00:00
+- GeneratedAt: 2026-04-26T20:14:47.859596+00:00
 - Dataset: `/Users/macbook/Documents/HK2_Nam3(2526)/Theory/Cloud/ai-agent-data-analyst/backend/evaluation/eval_dataset.json`
 - GeneratorMode: `sql_only`
 
 ## Summary Metrics
 
-- EvaluatedSamples: **10** / InputSamples: **10**
-- ExecutionSuccessRate: **60.00%**
+- EvaluatedSamples: **20** / InputSamples: **20**
+- ExecutionSuccessRate: **85.00%**
 - SafetyPassRate: **100.00%**
-- SemanticMatchRate: **80.00%**
-- OverallWeightedScore: **83.90%**
+- SemanticMatchRate: **95.00%**
+- OverallWeightedScore: **94.05%**
 
 ## Benchmark metrics (Spider / BIRD style)
 
@@ -21,23 +21,32 @@
 > - **EX_partial**: F1-score dựa trên số dòng khớp (partial credit khi EX < 1.0).
 > - **VES**: Hiệu năng SQL so với gold — `sqrt(T_gold/T_gen)`, cap = 1.0 (chuẩn BIRD).
 
-- Exact Match (EM) mean: **0.4**
-- Component Match (CM) mean: **0.6495**
-- Execution Accuracy (EX) mean: **0.6**
-- Partial Execution / F1 (EX_partial) mean: **0.8247**
-- Valid Efficiency Score (VES) mean [cap=1.0]: **0.5941**
+- Exact Match (EM) mean: **0.45**
+- Component Match (CM) mean: **0.8718**
+- Execution Accuracy (EX) mean: **0.85**
+- Partial Execution / F1 (EX_partial) mean: **0.9417**
+- Valid Efficiency Score (VES) mean [cap=1.0]: **0.8412**
 
 - EM_gte_0.8: **FAIL**
-- CM_gte_0.8: **FAIL**
+- CM_gte_0.8: **PASS**
 - EX_gte_0.9: **FAIL**
 - VES_gte_1.0: **FAIL**
+
+## EX Failure Dashboard
+
+- EX failed total: **3**
+- Alias-only mismatch: **0** (rate: 0.00%)
+- LIMIT/TOP-N mismatch: **1** (rate: 33.33%)
+  - Sample IDs: `aggregate_009`
+- Semantic mismatch: **2** (rate: 66.67%)
+  - Sample IDs: `basic_select_006, aggregate_010`
 
 ## Target Check
 
 - execution_success_rate: **FAIL**
 - safety_pass_rate: **PASS**
 - semantic_match_rate: **PASS**
-- overall_weighted_score: **FAIL**
+- overall_weighted_score: **PASS**
 
 ## Case Details
 
@@ -48,10 +57,10 @@
 - PerformancePass: `True`
 - SemanticScore: `1.0`
 - EM: `1.0`
-- CM: `0.7259`
+- CM: `1.0`
 - EX (strict): `1.0`
 - EX_partial (F1): `1.0`
-- VES: `1.0`
+- VES: `0.9558`
 - ExecutionSuccess: `True`
 - Errors: `none`
 
@@ -62,14 +71,12 @@
 - PerformancePass: `True`
 - SemanticScore: `1.0`
 - EM: `0.0`
-- CM: `0.8095`
-- EX (strict): `0.0`
+- CM: `0.8571`
+- EX (strict): `1.0`
 - EX_partial (F1): `1.0`
-- VES: `0.0`
-- ExecutionSuccess: `False`
+- VES: `1.0`
+- ExecutionSuccess: `True`
 - Errors: `none`
-- **EX Diff Analysis:**
-  - Số dòng: generated=`1` | gold=`1` | matched=`1` | missing=`0` | extra=`0`
 
 ### basic_select_003
 - Category: `basic_select` | Difficulty: `easy`
@@ -78,10 +85,10 @@
 - PerformancePass: `True`
 - SemanticScore: `1.0`
 - EM: `0.0`
-- CM: `0.4074`
+- CM: `0.6667`
 - EX (strict): `1.0`
 - EX_partial (F1): `1.0`
-- VES: `0.9752`
+- VES: `0.9955`
 - ExecutionSuccess: `True`
 - Errors: `none`
 
@@ -92,10 +99,10 @@
 - PerformancePass: `True`
 - SemanticScore: `1.0`
 - EM: `1.0`
-- CM: `0.7037`
+- CM: `1.0`
 - EX (strict): `1.0`
 - EX_partial (F1): `1.0`
-- VES: `0.9918`
+- VES: `0.9989`
 - ExecutionSuccess: `True`
 - Errors: `none`
 
@@ -105,11 +112,11 @@
 - SafetyPass: `True`
 - PerformancePass: `True`
 - SemanticScore: `1.0`
-- EM: `0.0`
-- CM: `0.7844`
+- EM: `1.0`
+- CM: `1.0`
 - EX (strict): `1.0`
 - EX_partial (F1): `1.0`
-- VES: `1.0`
+- VES: `0.9867`
 - ExecutionSuccess: `True`
 - Errors: `none`
 
@@ -139,8 +146,8 @@
 - SafetyPass: `True`
 - PerformancePass: `True`
 - SemanticScore: `1.0`
-- EM: `1.0`
-- CM: `1.0`
+- EM: `0.0`
+- CM: `0.8364`
 - EX (strict): `1.0`
 - EX_partial (F1): `1.0`
 - VES: `1.0`
@@ -154,15 +161,12 @@
 - PerformancePass: `True`
 - SemanticScore: `1.0`
 - EM: `0.0`
-- CM: `0.2778`
-- EX (strict): `0.0`
+- CM: `0.6667`
+- EX (strict): `1.0`
 - EX_partial (F1): `1.0`
-- VES: `0.0`
-- ExecutionSuccess: `False`
+- VES: `0.9593`
+- ExecutionSuccess: `True`
 - Errors: `none`
-- **EX Diff Analysis:**
-  - ➕ Thừa cột: `['total_transactions']`
-  - Số dòng: generated=`5` | gold=`5` | matched=`5` | missing=`0` | extra=`0`
 
 ### basic_select_009
 - Category: `basic_select` | Difficulty: `easy`
@@ -171,10 +175,10 @@
 - PerformancePass: `True`
 - SemanticScore: `1.0`
 - EM: `1.0`
-- CM: `0.7259`
+- CM: `1.0`
 - EX (strict): `1.0`
 - EX_partial (F1): `1.0`
-- VES: `0.9736`
+- VES: `0.9888`
 - ExecutionSuccess: `True`
 - Errors: `none`
 
@@ -183,17 +187,159 @@
 - SyntaxPass: `True`
 - SafetyPass: `True`
 - PerformancePass: `True`
-- SemanticScore: `0.5481`
+- SemanticScore: `1.0`
+- EM: `1.0`
+- CM: `1.0`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `1.0`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_001
+- Category: `aggregate` | Difficulty: `medium`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
 - EM: `0.0`
-- CM: `0.2143`
+- CM: `0.9231`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `0.9795`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_002
+- Category: `aggregate` | Difficulty: `easy`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
+- EM: `0.0`
+- CM: `0.9444`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `0.996`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_003
+- Category: `aggregate` | Difficulty: `medium`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
+- EM: `0.0`
+- CM: `0.6`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `1.0`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_004
+- Category: `aggregate` | Difficulty: `medium`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
+- EM: `1.0`
+- CM: `1.0`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `0.9634`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_005
+- Category: `aggregate` | Difficulty: `easy`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
+- EM: `1.0`
+- CM: `1.0`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `1.0`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_006
+- Category: `aggregate` | Difficulty: `medium`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
+- EM: `1.0`
+- CM: `1.0`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `1.0`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_007
+- Category: `aggregate` | Difficulty: `medium`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
+- EM: `1.0`
+- CM: `1.0`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `1.0`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_008
+- Category: `aggregate` | Difficulty: `medium`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
+- EM: `0.0`
+- CM: `0.3778`
+- EX (strict): `1.0`
+- EX_partial (F1): `1.0`
+- VES: `1.0`
+- ExecutionSuccess: `True`
+- Errors: `none`
+
+### aggregate_009
+- Category: `aggregate` | Difficulty: `easy`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `0.9`
+- EM: `0.0`
+- CM: `0.8333`
 - EX (strict): `0.0`
-- EX_partial (F1): `0.2469`
+- EX_partial (F1): `0.8333`
 - VES: `0.0`
 - ExecutionSuccess: `False`
 - Errors: `none`
 - **EX Diff Analysis:**
-  - Số dòng: generated=`10` | gold=`71` | matched=`10` | missing=`61` | extra=`0`
+  - Số dòng: generated=`5` | gold=`7` | matched=`5` | missing=`2` | extra=`0`
   - Sample dòng gold không khớp (tối đa 3):
-    - `{'product_category_name': 'agro_industria_e_comercio', 'product_category_name_english': 'agro_industry_and_commerce'}`
-    - `{'product_category_name': 'artes', 'product_category_name_english': 'art'}`
-    - `{'product_category_name': 'artes_e_artesanato', 'product_category_name_english': 'arts_and_craftmanship'}`
+    - `{'review_score': '4', 'total_reviews': '19142'}`
+    - `{'review_score': '5', 'total_reviews': '57328'}`
+
+### aggregate_010
+- Category: `aggregate` | Difficulty: `medium`
+- SyntaxPass: `True`
+- SafetyPass: `True`
+- PerformancePass: `True`
+- SemanticScore: `1.0`
+- EM: `0.0`
+- CM: `0.8852`
+- EX (strict): `0.0`
+- EX_partial (F1): `1.0`
+- VES: `0.0`
+- ExecutionSuccess: `False`
+- Errors: `none`
+- **EX Diff Analysis:**
+  - ➕ Thừa cột: `['total_orders']`
+  - Số dòng: generated=`3` | gold=`3` | matched=`3` | missing=`0` | extra=`0`
