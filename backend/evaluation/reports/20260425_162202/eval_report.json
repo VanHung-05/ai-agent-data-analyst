@@ -1,0 +1,315 @@
+{
+  "generated_at": "2026-04-25T09:31:59.041217+00:00",
+  "dataset_path": "/Users/macbook/Documents/HK2_Nam3(2526)/Theory/Cloud/ai-agent-data-analyst/backend/evaluation/eval_dataset.json",
+  "generator_mode": "sql_only",
+  "api_url": null,
+  "summary": {
+    "total_samples": 6,
+    "total_input_samples": 10,
+    "evaluated_samples": 6,
+    "skipped_samples": 4,
+    "skipped_case_ids": [
+      "basic_select_001",
+      "basic_select_005",
+      "basic_select_007",
+      "basic_select_008"
+    ],
+    "execution_success_rate": 0.5,
+    "safety_pass_rate": 1.0,
+    "semantic_match_rate": 1.0,
+    "syntax_pass_rate": 1.0,
+    "performance_pass_rate": 1.0,
+    "average_semantic_score": 0.9542,
+    "overall_weighted_score": 0.8158,
+    "benchmark_metrics": {
+      "EM_mean": 0.0,
+      "CM_mean": 0.6062,
+      "EX_mean": 0.5,
+      "VES_mean": 0.4949
+    },
+    "benchmark_target_pass": {
+      "EM_gte_0.8": false,
+      "CM_gte_0.8": false,
+      "EX_gte_0.9": false,
+      "VES_gte_1.0": false
+    },
+    "targets": {
+      "execution_success_rate_gte": 0.9,
+      "safety_pass_rate_eq": 1.0,
+      "semantic_match_rate_gte": 0.8,
+      "overall_weighted_score_gte": 0.85
+    },
+    "target_pass": {
+      "execution_success_rate": false,
+      "safety_pass_rate": true,
+      "semantic_match_rate": true,
+      "overall_weighted_score": false
+    }
+  },
+  "cases": [
+    {
+      "id": "basic_select_001",
+      "question": "Liệt kê 10 đơn hàng đầu tiên trong hệ thống theo thời gian đặt hàng?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": null,
+      "gold_sql": "SELECT o.order_id, o.customer_id, o.order_status, o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn FROM olist_orders o ORDER BY o.order_purchase_timestamp ASC LIMIT 10",
+      "scores": {
+        "SyntaxPass": false,
+        "SafetyPass": false,
+        "PerformancePass": false,
+        "SemanticScore": 0.0,
+        "EM": 0.0,
+        "CM": 0.0,
+        "CM_detail": {
+          "SELECT": 0.0,
+          "FROM": 0.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 0.0
+        }
+      },
+      "execution_success": false,
+      "errors": [
+        "generate_sql_error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "generated_sql_empty"
+      ]
+    },
+    {
+      "id": "basic_select_002",
+      "question": "Có bao nhiêu khách hàng trong hệ thống?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS total_customers FROM olist_customers LIMIT 1000",
+      "gold_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS total_customers FROM olist_customers LIMIT 1",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8571,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "VES": 0.9944
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_003",
+      "question": "Liệt kê tất cả trạng thái đơn hàng có trong hệ thống?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT DISTINCT order_status FROM olist_orders\nUNION\nSELECT DISTINCT order_status FROM bronze_rt_orders_sim LIMIT 1000",
+      "gold_sql": "SELECT DISTINCT order_status FROM olist_orders ORDER BY order_status LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.4444,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 0.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "VES": 0.9881
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_004",
+      "question": "Liệt kê 10 sản phẩm có nhiều ảnh nhất?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT product_id, product_photos_qty\nFROM olist_products\nORDER BY product_photos_qty DESC\nLIMIT 10",
+      "gold_sql": "SELECT p.product_id, p.product_category_name, p.product_photos_qty FROM olist_products p ORDER BY p.product_photos_qty DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.9,
+        "EM": 0.0,
+        "CM": 0.5926,
+        "CM_detail": {
+          "SELECT": 0.5,
+          "FROM": 0.5,
+          "ORDER BY": 0.6667,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": []
+    },
+    {
+      "id": "basic_select_005",
+      "question": "Liệt kê 10 người bán đầu tiên tại thành phố São Paulo (SP)?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": null,
+      "gold_sql": "SELECT s.seller_id, s.seller_city, s.seller_state, s.seller_zip_code_prefix FROM olist_sellers s WHERE s.seller_state = 'SP' LIMIT 10",
+      "scores": {
+        "SyntaxPass": false,
+        "SafetyPass": false,
+        "PerformancePass": false,
+        "SemanticScore": 0.0,
+        "EM": 0.0,
+        "CM": 0.0,
+        "CM_detail": {
+          "SELECT": 0.0,
+          "FROM": 0.0,
+          "WHERE": 0.0,
+          "LIMIT": 0.0
+        }
+      },
+      "execution_success": false,
+      "errors": [
+        "generate_sql_error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "generated_sql_empty"
+      ]
+    },
+    {
+      "id": "basic_select_006",
+      "question": "Hiển thị thông tin 5 đánh giá có điểm thấp nhất (1 sao)?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT r.review_id, r.order_id, r.review_score, r.review_comment_message, r.review_creation_date\nFROM ai_analyst.ecommerce.olist_order_reviews r\nWHERE r.review_score = 1\nORDER BY r.review_creation_date DESC\nLIMIT 5",
+      "gold_sql": "SELECT r.review_id, r.order_id, r.review_score, r.review_comment_title, r.review_comment_message, r.review_creation_date + INTERVAL 7 HOURS AS review_creation_date_vn FROM olist_order_reviews r WHERE r.review_score = 1 ORDER BY r.review_creation_date DESC LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.9,
+        "EM": 0.0,
+        "CM": 0.7692,
+        "CM_detail": {
+          "SELECT": 0.5,
+          "FROM": 0.5,
+          "WHERE": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": []
+    },
+    {
+      "id": "basic_select_007",
+      "question": "Có bao nhiêu đơn hàng bị hủy trong hệ thống?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": null,
+      "gold_sql": "SELECT COUNT(DISTINCT order_id) AS canceled_orders FROM olist_orders WHERE order_status = 'canceled' LIMIT 1",
+      "scores": {
+        "SyntaxPass": false,
+        "SafetyPass": false,
+        "PerformancePass": false,
+        "SemanticScore": 0.0,
+        "EM": 0.0,
+        "CM": 0.0,
+        "CM_detail": {
+          "SELECT": 0.0,
+          "FROM": 0.0,
+          "WHERE": 0.0,
+          "LIMIT": 0.0
+        }
+      },
+      "execution_success": false,
+      "errors": [
+        "generate_sql_error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "generated_sql_empty"
+      ]
+    },
+    {
+      "id": "basic_select_008",
+      "question": "Liệt kê tất cả phương thức thanh toán có trong hệ thống?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": null,
+      "gold_sql": "SELECT DISTINCT payment_type FROM olist_order_payments ORDER BY payment_type LIMIT 10",
+      "scores": {
+        "SyntaxPass": false,
+        "SafetyPass": false,
+        "PerformancePass": false,
+        "SemanticScore": 0.0,
+        "EM": 0.0,
+        "CM": 0.0,
+        "CM_detail": {
+          "SELECT": 0.0,
+          "FROM": 0.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 0.0
+        }
+      },
+      "execution_success": false,
+      "errors": [
+        "generate_sql_error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "generated_sql_empty"
+      ]
+    },
+    {
+      "id": "basic_select_009",
+      "question": "Hiển thị 10 đơn hàng gần đây nhất theo thời gian mua (dữ liệu lịch sử)?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT order_id, customer_id, order_status, order_purchase_timestamp\nFROM ai_analyst.ecommerce.olist_orders\nORDER BY order_purchase_timestamp DESC\nLIMIT 10",
+      "gold_sql": "SELECT o.order_id, o.customer_id, o.order_status, o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn FROM olist_orders o ORDER BY o.order_purchase_timestamp DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.925,
+        "EM": 0.0,
+        "CM": 0.4926,
+        "CM_detail": {
+          "SELECT": 0.4,
+          "FROM": 0.25,
+          "ORDER BY": 0.6667,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": []
+    },
+    {
+      "id": "basic_select_010",
+      "question": "Liệt kê tất cả danh mục sản phẩm cùng tên tiếng Anh?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT product_category_name, product_category_name_english\nFROM product_category_name_translation\nORDER BY product_category_name_english ASC LIMIT 1000",
+      "gold_sql": "SELECT t.product_category_name, t.product_category_name_english FROM product_category_name_translation t ORDER BY t.product_category_name_english LIMIT 100",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.4815,
+        "CM_detail": {
+          "SELECT": 0.6667,
+          "FROM": 0.5,
+          "ORDER BY": 0.3333,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "VES": 0.987
+      },
+      "execution_success": true,
+      "errors": []
+    }
+  ]
+}

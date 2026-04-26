@@ -1,0 +1,417 @@
+{
+  "generated_at": "2026-04-25T16:17:27.157928+00:00",
+  "dataset_path": "/Users/macbook/Documents/HK2_Nam3(2526)/Theory/Cloud/ai-agent-data-analyst/backend/evaluation/eval_dataset.json",
+  "generator_mode": "sql_only",
+  "api_url": null,
+  "summary": {
+    "total_samples": 10,
+    "total_input_samples": 10,
+    "evaluated_samples": 10,
+    "skipped_samples": 0,
+    "skipped_case_ids": [],
+    "execution_success_rate": 0.6,
+    "safety_pass_rate": 1.0,
+    "semantic_match_rate": 0.8,
+    "syntax_pass_rate": 1.0,
+    "performance_pass_rate": 1.0,
+    "average_semantic_score": 0.8948,
+    "overall_weighted_score": 0.839,
+    "benchmark_metrics": {
+      "EM_mean": 0.4,
+      "CM_mean": 0.6495,
+      "EX_mean": 0.6,
+      "EX_partial_mean": 0.8247,
+      "VES_mean": 0.5941
+    },
+    "benchmark_target_pass": {
+      "EM_gte_0.8": false,
+      "CM_gte_0.8": false,
+      "EX_gte_0.9": false,
+      "VES_gte_1.0": false
+    },
+    "targets": {
+      "execution_success_rate_gte": 0.9,
+      "safety_pass_rate_eq": 1.0,
+      "semantic_match_rate_gte": 0.8,
+      "overall_weighted_score_gte": 0.85
+    },
+    "target_pass": {
+      "execution_success_rate": false,
+      "safety_pass_rate": true,
+      "semantic_match_rate": true,
+      "overall_weighted_score": false
+    }
+  },
+  "cases": [
+    {
+      "id": "basic_select_001",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê 10 đơn hàng đầu tiên trong hệ thống theo thời gian đặt hàng? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT order_id, customer_id, order_status, order_purchase_timestamp\nFROM olist_orders\nORDER BY order_purchase_timestamp ASC\nLIMIT 10",
+      "gold_sql": "SELECT o.order_id, o.customer_id, o.order_status, o.order_purchase_timestamp FROM olist_orders o ORDER BY o.order_purchase_timestamp ASC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 0.7259,
+        "CM_detail": {
+          "SELECT": 0.8,
+          "FROM": 0.5,
+          "ORDER BY": 0.6667,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_002",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Có bao nhiêu khách hàng trong hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS total_unique_customers FROM olist_customers LIMIT 10",
+      "gold_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS total_customers FROM olist_customers LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8095,
+        "CM_detail": {
+          "SELECT": 0.6667,
+          "FROM": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 1.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "total_unique_customers"
+        ],
+        "gold_columns": [
+          "total_customers"
+        ],
+        "value_based_col_mapping": {
+          "total_customers": "total_unique_customers"
+        },
+        "col_score": 1.0,
+        "row_f1": 1.0,
+        "row_count_generated": 1,
+        "row_count_gold": 1,
+        "rows_matched": 1,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "basic_select_003",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê tất cả trạng thái đơn hàng có trong hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT DISTINCT order_status FROM olist_orders LIMIT 10",
+      "gold_sql": "SELECT DISTINCT o.order_status FROM olist_orders o ORDER BY o.order_status LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.4074,
+        "CM_detail": {
+          "SELECT": 0.6667,
+          "FROM": 0.5,
+          "ORDER BY": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9752
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_004",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê 10 sản phẩm có nhiều ảnh nhất? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT product_id, product_category_name, product_photos_qty\nFROM olist_products\nORDER BY product_photos_qty DESC\nLIMIT 10",
+      "gold_sql": "SELECT p.product_id, p.product_category_name, p.product_photos_qty FROM olist_products p ORDER BY p.product_photos_qty DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 0.7037,
+        "CM_detail": {
+          "SELECT": 0.75,
+          "FROM": 0.5,
+          "ORDER BY": 0.6667,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9918
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_005",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê 10 người bán đầu tiên tại thành phố São Paulo (SP)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT seller_id, seller_zip_code_prefix, seller_city, seller_state\nFROM olist_sellers\nWHERE seller_city = 'sao paulo' AND seller_state = 'SP'\nLIMIT 10",
+      "gold_sql": "SELECT s.seller_id, s.seller_city, s.seller_state, s.seller_zip_code_prefix FROM olist_sellers s WHERE s.seller_city = 'sao paulo' AND s.seller_state = 'SP' LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.7844,
+        "CM_detail": {
+          "SELECT": 0.8,
+          "FROM": 0.5,
+          "WHERE": 0.8571,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_006",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Hiển thị thông tin 5 đánh giá có điểm thấp nhất (1 sao)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT r.review_id, r.order_id, r.review_score, r.review_comment_message, r.review_creation_date\nFROM olist_order_reviews r\nWHERE r.review_score = 1\nORDER BY r.review_creation_date ASC\nLIMIT 5",
+      "gold_sql": "SELECT r.review_id, r.order_id, r.review_score, r.review_comment_message, r.review_creation_date FROM olist_order_reviews r WHERE r.review_score = 1 LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4,
+        "EM": 0.0,
+        "CM": 0.8462,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "col_score": 1.0,
+        "row_f1": 0.0,
+        "row_count_generated": 5,
+        "row_count_gold": 5,
+        "rows_matched": 0,
+        "rows_missing_in_gen": 5,
+        "rows_extra_in_gen": 5,
+        "sample_unmatched_gold_rows": [
+          {
+            "review_id": "15197aa66ff4d0650b5434f1b46cda19",
+            "order_id": "b18dcdf73be66366873cd26c5724d1dc",
+            "review_score": "1",
+            "review_comment_message": "None",
+            "review_creation_date": "2018-04-13 00:00:00+00:00"
+          },
+          {
+            "review_id": "373cbeecea8286a2b66c97b1b157ec46",
+            "order_id": "583174fbe37d3d5f0d6661be3aad1786",
+            "review_score": "1",
+            "review_comment_message": "Péssimo",
+            "review_creation_date": "2018-08-15 00:00:00+00:00"
+          },
+          {
+            "review_id": "2c5e27fc178bde7ac173c9c62c31b070",
+            "order_id": "0ce9a24111d850192a933fcaab6fbad3",
+            "review_score": "1",
+            "review_comment_message": "Não gostei ! Comprei gato por lebre",
+            "review_creation_date": "2017-12-13 00:00:00+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "basic_select_007",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Có bao nhiêu đơn hàng bị hủy trong hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT COUNT(order_id) AS canceled_orders\nFROM olist_orders\nWHERE order_status = 'canceled'\nLIMIT 10",
+      "gold_sql": "SELECT COUNT(order_id) AS canceled_orders FROM olist_orders WHERE order_status = 'canceled' LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_008",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê tất cả phương thức thanh toán có trong hệ thống? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT DISTINCT payment_type, COUNT(*) AS total_transactions\nFROM olist_order_payments\nGROUP BY payment_type\nORDER BY total_transactions DESC\nLIMIT 10",
+      "gold_sql": "SELECT DISTINCT p.payment_type FROM olist_order_payments p ORDER BY p.payment_type LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.2778,
+        "CM_detail": {
+          "SELECT": 0.3333,
+          "FROM": 0.5,
+          "GROUP BY": 0.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 1.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "extra_columns": [
+          "total_transactions"
+        ],
+        "generated_columns": [
+          "payment_type",
+          "total_transactions"
+        ],
+        "gold_columns": [
+          "payment_type"
+        ],
+        "value_based_col_mapping": {
+          "payment_type": "payment_type"
+        },
+        "col_score": 1.0,
+        "row_f1": 1.0,
+        "row_count_generated": 5,
+        "row_count_gold": 5,
+        "rows_matched": 5,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "basic_select_009",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Hiển thị 10 đơn hàng gần đây nhất theo thời gian mua (dữ liệu lịch sử)? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT order_id, customer_id, order_status, order_purchase_timestamp\nFROM olist_orders\nORDER BY order_purchase_timestamp DESC\nLIMIT 10",
+      "gold_sql": "SELECT o.order_id, o.customer_id, o.order_status, o.order_purchase_timestamp FROM olist_orders o ORDER BY o.order_purchase_timestamp DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 0.7259,
+        "CM_detail": {
+          "SELECT": 0.8,
+          "FROM": 0.5,
+          "ORDER BY": 0.6667,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9736
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_010",
+      "question": "[Few-shot guided] Ví dụ tương tự: \"Liệt kê 10 đơn hàng đầu tiên trong hệ thống?\". Yêu cầu chính: Liệt kê tất cả danh mục sản phẩm cùng tên tiếng Anh? (Chỉ viết 1 câu SQL Spark SELECT, tuân thủ schema Olist, có LIMIT phù hợp).",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT p.product_category_name, t.product_category_name_english\nFROM olist_products p\nLEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nGROUP BY p.product_category_name, t.product_category_name_english\nLIMIT 10",
+      "gold_sql": "SELECT t.product_category_name, t.product_category_name_english FROM product_category_name_translation t ORDER BY t.product_category_name_english LIMIT 100",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.5481,
+        "EM": 0.0,
+        "CM": 0.2143,
+        "CM_detail": {
+          "SELECT": 0.75,
+          "FROM": 0.0,
+          "JOIN": 0.0,
+          "GROUP BY": 0.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.2469,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "limit_subset_detected": true,
+        "note": "gen (10 rows) là tập con hợp lệ của gold (71 rows) — có thể do AI thêm LIMIT ngầm định. Precision = 1.0.",
+        "col_score": 1.0,
+        "row_f1": 0.2469,
+        "row_count_generated": 10,
+        "row_count_gold": 71,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 61,
+        "rows_extra_in_gen": 0,
+        "sample_unmatched_gold_rows": [
+          {
+            "product_category_name": "agro_industria_e_comercio",
+            "product_category_name_english": "agro_industry_and_commerce"
+          },
+          {
+            "product_category_name": "artes",
+            "product_category_name_english": "art"
+          },
+          {
+            "product_category_name": "artes_e_artesanato",
+            "product_category_name_english": "arts_and_craftmanship"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -148,7 +148,7 @@ Columns:
 
 === STRICT RULES ===
 1. NEVER generate DML: INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE.
-2. ALWAYS add LIMIT unless the user explicitly specifies a different limit.
+2. ALWAYS add LIMIT — xem Rule 14 để biết giá trị phù hợp.
 3. Use ONLY table and column names listed above. Do NOT invent columns.
 4. If the user's question is unclear, return an explanation instead of guessing.
 5. Use Spark SQL functions: date_trunc(), year(), month(), datediff(), date_format(), COALESCE().
@@ -158,14 +158,21 @@ Columns:
 9. When querying product categories in English, JOIN with product_category_name_translation.
 10. Remember: 1 order can have MULTIPLE items. Use olist_order_items for item-level analysis.
 11. For monetary calculations, ALWAYS use price/freight_value from olist_order_items (NOT from olist_products).
-12. Human-readable SELECT (end-user facing): The Olist schema has NO separate product title column (no Product_Name). For questions about "products", "expensive item", "top selling", etc., always SELECT descriptive fields that humans understand: e.g. product_category_name, and JOIN product_category_name_translation to add product_category_name_english; include seller_city/seller_state or customer_city/customer_state when the question involves geography; include order_status or formatted dates when relevant. Do NOT return only surrogate keys (product_id, customer_id, order_id, seller_id) unless the user explicitly asks for IDs only. It is OK to include an ID in addition to descriptions (e.g. category + product_id for reference).
-13. TIMEZONE RULE — BẮT BUỘC TUYỆT ĐỐI:
-    - Databricks/Spark lưu tất cả TIMESTAMP theo UTC (UTC+0).
-    - Hệ thống hoạt động tại Việt Nam (UTC+7). Mọi query lọc theo ngày/giờ PHẢI cộng thêm 7 tiếng.
-    - Ví dụ thực tế: Pipeline chạy lúc 01:25 AM VN = 18:25 UTC ngày hôm trước.
-      Nếu dùng CURRENT_DATE() (UTC) sẽ bị MẤT toàn bộ data từ 00:00–06:59 AM VN!
+    CITY FILTER: Khi câu hỏi nhắc đến tên thành phố cụ thể (e.g. "tại thành phố São Paulo"), LUÔN lọc cả city lẫn state:
+    WHERE seller_city = 'sao paulo' AND seller_state = 'SP'  (không chỉ lọc state)
+12. Human-readable SELECT: SELECT descriptive fields (category names, city, state), không chỉ surrogate keys.
+    JOIN product_category_name_translation để hiển thị tên danh mục tiếng Anh. Thêm seller_city/state, customer_city/state khi câu hỏi liên quan địa lý.
+13. TIMEZONE RULE:
+    a) Dữ liệu LỊCH SỬ (olist_*): KHÔNG bắt buộc +7h khi GROUP BY/FILTER/ORDER BY.
+       TÙY CHỌN thêm +7h khi SELECT timestamp để hiển thị giờ VN (alias: thoi_gian_vn).
+    b) Dữ liệu REALTIME (bronze_rt_orders_sim): BẮT BUỘC +7h khi filter theo ngày VN và khi SELECT timestamp hiển thị.
+    c) Realtime queries không filter date và không SELECT timestamp: +7h không cần thiết.
+14. LIMIT RULE:
+    a) Query COUNT/SUM/AVG (1 row): dùng LIMIT 10 — KHÔNG dùng LIMIT 1.
+    b) Câu hỏi yêu cầu TẤT CẢ / TOÀN BỘ ("all categories", "tất cả danh mục", "toàn bộ bang"): LIMIT 100 hoặc LIMIT 200.
+    c) GROUP BY nhiều hàng: LIMIT 20–50. Top-N queries: LIMIT = N.
 
-    === TIMEZONE HELPER EXPRESSIONS (copy chính xác) ===
+=== TIMEZONE HELPER EXPRESSIONS (copy chính xác — chỉ áp dụng cho REALTIME) ===
     -- Ngày hôm nay (giờ VN):
     DATE(col + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)
 
@@ -181,12 +188,12 @@ Columns:
     -- Trả về Timestamp đầy đủ cho hiển thị:
     col + INTERVAL 7 HOURS AS thoi_gian_vn
 
-    -- TUYỆT ĐỐI KHÔNG DÙNG:
+    -- TUYỆT ĐỐI KHÔNG DÙNG (cho REALTIME):
     DATE(col) = CURRENT_DATE()          ← SAI (UTC, lệch 7h)
     HOUR(col)                           ← SAI (UTC hour, không phải VN)
     date_format(col, 'yyyy-MM-dd')      ← SAI (UTC)
 
-    Quy tắc áp dụng cho: bronze_rt_orders_sim VÀ mọi bảng có TIMESTAMP. Khi SELECT cột thời gian cuối cùng để đưa ra cho người dùng, LUÔN LUÔN cộng thêm 7 tiếng (+ INTERVAL 7 HOURS).
+    Quy tắc: REALTIME → bắt buộc +7h khi filter ngày/SELECT timestamp. LỊCH SỬ → tùy chọn.
 
 === RESPONSE FORMAT ===
 - Return ONLY the SQL query, nothing else.

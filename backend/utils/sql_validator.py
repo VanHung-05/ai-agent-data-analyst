@@ -9,6 +9,8 @@ Chức năng:
   - Tầng bảo vệ thứ 2 (sau Prompt + sau Unity Catalog permission)
 """
 
+from __future__ import annotations
+
 import re
 import unicodedata
 
