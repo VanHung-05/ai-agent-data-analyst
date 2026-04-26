@@ -100,6 +100,7 @@ Columns:
 
 --- TABLE: product_category_name_translation ---
 Description: Bảng dịch tên danh mục từ tiếng Bồ Đào Nha sang tiếng Anh
+NOTE QUAN TRỌNG: Khi người dùng hỏi "liệt kê tất cả danh mục" hoặc "toàn bộ danh mục", ưu tiên query trực tiếp từ bảng này (không JOIN/GROUP BY qua olist_products nếu không cần).
 Columns:
   - product_category_name STRING              — Tên tiếng Bồ Đào Nha (JOIN key)
   - product_category_name_english STRING      — Tên tiếng Anh
@@ -120,6 +121,8 @@ Columns:
    - Doanh thu tổng (bao gồm ship) = SUM(oi.price + oi.freight_value)
    - KHÔNG tính đơn canceled/unavailable vào doanh thu
    - Đơn vị tiền: BRL (Real Brazil, R$)
+   *** QUAN TRỌNG: CHỈ lọc WHERE order_status = 'delivered' khi tính DOANH THU (revenue/SUM(price)).
+       Các thống kê KHÁC (phí vận chuyển tổng hợp, đếm đơn hàng, phân tích thanh toán...) KHÔNG tự ý thêm điều kiện order_status trừ khi user yêu cầu rõ ràng. ***
 
 2. ĐƠN HÀNG (Orders):
    - 1 đơn hàng (order) có thể chứa nhiều sản phẩm (items) từ nhiều seller khác nhau
@@ -148,7 +151,7 @@ Columns:
 
 === STRICT RULES ===
 1. NEVER generate DML: INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE.
-2. ALWAYS add LIMIT — xem Rule 14 để biết giá trị phù hợp.
+2. ALWAYS add LIMIT — xem Rule 15 để biết giá trị phù hợp.
 3. Use ONLY table and column names listed above. Do NOT invent columns.
 4. If the user's question is unclear, return an explanation instead of guessing.
 5. Use Spark SQL functions: date_trunc(), year(), month(), datediff(), date_format(), COALESCE().
@@ -160,17 +163,67 @@ Columns:
 11. For monetary calculations, ALWAYS use price/freight_value from olist_order_items (NOT from olist_products).
     CITY FILTER: Khi câu hỏi nhắc đến tên thành phố cụ thể (e.g. "tại thành phố São Paulo"), LUÔN lọc cả city lẫn state:
     WHERE seller_city = 'sao paulo' AND seller_state = 'SP'  (không chỉ lọc state)
-12. Human-readable SELECT: SELECT descriptive fields (category names, city, state), không chỉ surrogate keys.
-    JOIN product_category_name_translation để hiển thị tên danh mục tiếng Anh. Thêm seller_city/state, customer_city/state khi câu hỏi liên quan địa lý.
-13. TIMEZONE RULE:
+    DETAIL RULE: Nếu câu hỏi yêu cầu "hiển thị chi tiết / danh sách chi tiết", ưu tiên giữ khóa định danh chính trong SELECT
+    (ví dụ order_id, review_id, product_id, seller_id) trừ khi user yêu cầu bỏ.
+12. Human-readable SELECT (Intent-first + Context-expansion):
+    CHỈ SELECT đúng các cột mà câu hỏi yêu cầu. KHÔNG tự thêm cột metric/cột mô tả nếu user không hỏi.
+    - Câu "liệt kê X" → chỉ SELECT X.
+    - Chỉ thêm descriptive fields (city/state/category English) khi câu hỏi có ngữ cảnh cần chúng.
+    - Ví dụ: "liệt kê phương thức thanh toán" → chỉ SELECT DISTINCT payment_type (KHÔNG thêm COUNT(*) AS total_transactions).
+    NGOẠI LỆ BẮT BUỘC MỞ RỘNG:
+    a) Liệt kê sản phẩm (product) → LUÔN SELECT thêm product_category_name bên cạnh product_id.
+    b) Thống kê thanh toán (phương thức phổ biến nhất, phân tích payment) → LUÔN hiện CẢ COUNT(*) AS total_transactions VÀ ROUND(SUM(payment_value), 2) AS total_value.
+    c) Thống kê doanh thu/revenue theo thời gian (quý, tháng, năm) → LUÔN kèm COUNT(DISTINCT order_id) AS total_orders.
+13. ALIAS NAMING RULE (Critical):
+    Alias phải ngắn gọn, trung tính, không nhúng context thừa (năm, nguồn, tên bảng, timezone) trừ khi user yêu cầu rõ.
+    Bắt buộc ưu tiên alias canonical sau (PHẢI dùng đúng tên bên phải):
+    - avg_review_score        -> avg_score
+    - order_year              -> yr
+    - avg_freight_value       -> avg_freight
+    - avg_orders_per_day_2017 -> avg_orders_per_day
+    - total_unique_customers  -> total_customers
+    - canceled_orders (COUNT) -> canceled_orders
+    - avg_delivery_days / avg_delivery_time -> avg_wait_days
+    - max_item_price_brl / max_price -> max_price_brl
+    - category_english / category_en -> category_english (CHỈ khi câu hỏi yêu cầu rút gọn tên. Nếu query trực tiếp từ bảng translation mà không JOIN bảng khác, GIỮ NGUYÊN tên gốc product_category_name_english, KHÔNG ép alias.)
+    - total_categories / num_categories -> category_count
+    - new_customers / total_new_customers -> new_customers
+    - avg_revenue_per_order   -> avg_revenue_per_order
+    - total_reviews           -> total_reviews
+    - avg_payment_value       -> avg_payment
+    - total_sellers           -> total_sellers
+    - product_count / total_products -> product_count
+    Quy tắc: không tự tạo alias dài kiểu *_value/*_count/*_2017 nếu câu hỏi không yêu cầu.
+14. TIMEZONE RULE:
     a) Dữ liệu LỊCH SỬ (olist_*): KHÔNG bắt buộc +7h khi GROUP BY/FILTER/ORDER BY.
        TÙY CHỌN thêm +7h khi SELECT timestamp để hiển thị giờ VN (alias: thoi_gian_vn).
     b) Dữ liệu REALTIME (bronze_rt_orders_sim): BẮT BUỘC +7h khi filter theo ngày VN và khi SELECT timestamp hiển thị.
     c) Realtime queries không filter date và không SELECT timestamp: +7h không cần thiết.
-14. LIMIT RULE:
-    a) Query COUNT/SUM/AVG (1 row): dùng LIMIT 10 — KHÔNG dùng LIMIT 1.
-    b) Câu hỏi yêu cầu TẤT CẢ / TOÀN BỘ ("all categories", "tất cả danh mục", "toàn bộ bang"): LIMIT 100 hoặc LIMIT 200.
-    c) GROUP BY nhiều hàng: LIMIT 20–50. Top-N queries: LIMIT = N.
+15. LIMIT RULE:
+    a) Query COUNT/SUM/AVG trả đúng 1 dòng: dùng LIMIT 1.
+    b) Top-N / "cao nhất" / "thấp nhất" / "đầu tiên" / "mới nhất": LIMIT = N (hoặc mặc định 10 nếu không có N).
+    c) "tất cả/toàn bộ bang" (Brazil states, không Top-N): LIMIT 27 hoặc 30.
+    d) "tất cả/toàn bộ danh mục": LIMIT 100.
+    e) GROUP BY nhiều hàng (không phải all-states/all-categories): LIMIT 20.
+    f) KHÔNG tự ý tăng LIMIT (vd 10 -> 50/100) nếu câu hỏi đã nêu rõ phạm vi.
+    g) TUYỆT ĐỐI KHÔNG dùng LIMIT > 50 trừ khi câu hỏi nói rõ "tất cả danh mục" hoặc user chỉ định con số cụ thể > 50.
+16. ORDER BY RULE:
+    Chỉ dùng ORDER BY khi câu hỏi có ngụ ý sắp xếp rõ ràng: "cao nhất", "thấp nhất", "mới nhất", "đầu tiên", "top", "gần đây", "theo thứ tự".
+    Nếu câu hỏi chỉ yêu cầu "liệt kê/hiển thị" không kèm ngụ ý ranking/sorting -> KHÔNG tự thêm ORDER BY.
+17. CUSTOMER COUNTING RULE:
+    Khi đếm số lượng KHÁCH HÀNG, LUÔN dùng COUNT(DISTINCT customer_unique_id) thay vì COUNT(customer_id).
+    Lý do: 1 khách hàng (customer_unique_id) có thể có nhiều customer_id qua nhiều đơn.
+    Ví dụ: "Phân bổ khách hàng theo bang" → COUNT(DISTINCT c.customer_unique_id) AS total_customers.
+18. TIMESTAMP DISPLAY RULE:
+    Khi câu hỏi hỏi về "khoảng cách ngày giao", "thời gian giao hàng", "ngày đặt vs ngày giao", và cần hiển thị chi tiết → 
+    LUÔN SELECT thêm cột timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn và thoi_gian_giao_vn bên cạnh cột datediff.
+19. SIMPLICITY RULE:
+    Luôn chọn cách viết SQL đơn giản nhất. Ví dụ:
+    - "Số đơn trung bình mỗi ngày" → ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(col)), 1) thay vì subquery.
+    - "Seller chỉ bán trong năm 2018" → dùng WHERE year(...)=2018 + NOT EXISTS/NOT IN (lọc seller có đơn trước 2018) thay vì GROUP BY + HAVING.
+    - "Khách hàng mới theo tháng" → subquery MIN(order_purchase_timestamp) AS first_purchase, rồi filter year + GROUP BY month.
+20. CATEGORY DISPLAY RULE:
+    Khi hiển thị danh mục sản phẩm, LUÔN hiển thị cả tên tiếng Bồ Đào Nha (product_category_name) lẫn tiếng Anh (product_category_name_english). Chỉ dùng alias AS category_english khi JOIN từ bảng khác (olist_products). Nếu query trực tiếp từ product_category_name_translation → giữ nguyên tên gốc.
 
 === TIMEZONE HELPER EXPRESSIONS (copy chính xác — chỉ áp dụng cho REALTIME) ===
     -- Ngày hôm nay (giờ VN):
@@ -187,6 +240,12 @@ Columns:
 
     -- Trả về Timestamp đầy đủ cho hiển thị:
     col + INTERVAL 7 HOURS AS thoi_gian_vn
+
+    -- Convention alias timestamp theo ngữ cảnh field:
+    order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn
+    order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn
+    order_estimated_delivery_date + INTERVAL 7 HOURS AS thoi_gian_du_kien_vn
+    Pattern chuẩn: thoi_gian_{field}_vn
 
     -- TUYỆT ĐỐI KHÔNG DÙNG (cho REALTIME):
     DATE(col) = CURRENT_DATE()          ← SAI (UTC, lệch 7h)
@@ -224,26 +283,28 @@ Question: Có đơn hàng nào mới không? / Đơn hàng gần đây nhất? /
 SELECT MAX(order_purchase_timestamp + INTERVAL 7 HOURS) AS latest_order_date_vn, COUNT(order_id) AS total_new_orders
 FROM bronze_rt_orders_sim
 WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)
+LIMIT 1
 
 Question: Trạng thái của các đơn hàng chạy realtime hôm nay ra sao? / Thống kê số đơn hàng mới theo từng trạng thái?
 SELECT order_status, COUNT(order_id) AS so_luong_don
 FROM bronze_rt_orders_sim
 WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)
 GROUP BY order_status
-ORDER BY so_luong_don DESC
+LIMIT 20
 
 Question: Có khách hàng ở tiểu bang nào mua hàng nhiều nhất trong đợt nạp dữ liệu gần đây? (Join data realtime và data khách hàng cũ)
-SELECT c.customer_state, COUNT(rt.order_id) AS total_rt_orders
+SELECT c.customer_state, COUNT(rt.order_id) AS total_orders
 FROM bronze_rt_orders_sim rt
 JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id
 GROUP BY c.customer_state
-ORDER BY total_rt_orders DESC
+ORDER BY total_orders DESC
 LIMIT 5
 
 Question: Hôm nay có bao nhiêu đơn hàng mới? / Số đơn hàng ngày hôm nay?
-SELECT COUNT(order_id) AS total_orders_today
+SELECT COUNT(order_id) AS total_orders
 FROM bronze_rt_orders_sim
 WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)
+LIMIT 1
 
 Question: Chi tiết 10 đơn hàng mới nhất vừa vào hệ thống?
 SELECT rt.order_id, rt.customer_id, rt.order_status, rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn
@@ -276,11 +337,13 @@ ORDER BY gio_vn
 Question: Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)?
 SELECT
   (SELECT COUNT(order_id) FROM ai_analyst.ecommerce.olist_orders) + (SELECT COUNT(order_id) FROM bronze_rt_orders_sim) AS tong_don_toan_he_thong
+LIMIT 1
 
 Question: Có dữ liệu mới nào gần đây không? / Hệ thống có hoạt động không? / Pipeline có chạy không?
 SELECT MAX(order_purchase_timestamp + INTERVAL 7 HOURS) AS thoi_diem_don_moi_nhat_vn, COUNT(order_id) AS tong_don_hom_nay
 FROM bronze_rt_orders_sim
 WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)
+LIMIT 1
 
 Question: Thành phố nào có nhiều đơn hàng realtime nhất?
 SELECT c.customer_city, c.customer_state, COUNT(rt.order_id) AS so_don_moi
@@ -304,12 +367,14 @@ FROM bronze_rt_orders_sim
 WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY)
 GROUP BY ngay
 ORDER BY ngay DESC
+LIMIT 3
 
 Question: Tổng doanh thu là bao nhiêu?
 SELECT SUM(oi.price) AS total_revenue
 FROM olist_order_items oi
 JOIN olist_orders o ON oi.order_id = o.order_id
 WHERE o.order_status = 'delivered'
+LIMIT 1
 
 Question: Sản phẩm / mặt hàng nào có giá bán cao nhất (kèm danh mục, không chỉ mã ID)?
 SELECT p.product_id,
@@ -342,6 +407,7 @@ FROM olist_orders o
 WHERE year(o.order_purchase_timestamp) = 2017
 GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')
 ORDER BY month
+LIMIT 20
 
 Question: Điểm đánh giá trung bình theo bang của khách hàng?
 SELECT c.customer_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews
@@ -349,7 +415,7 @@ FROM olist_order_reviews r
 JOIN olist_orders o ON r.order_id = o.order_id
 JOIN olist_customers c ON o.customer_id = c.customer_id
 GROUP BY c.customer_state
-ORDER BY avg_score DESC
+LIMIT 27
 
 Question: Tỷ lệ giao hàng trễ?
 SELECT
@@ -359,12 +425,14 @@ SELECT
 FROM olist_orders o
 WHERE o.order_status = 'delivered'
   AND o.order_delivered_customer_date IS NOT NULL
+LIMIT 1
 
 Question: Phương thức thanh toán nào phổ biến nhất?
 SELECT p.payment_type, COUNT(*) AS total_transactions, ROUND(SUM(p.payment_value), 2) AS total_value
 FROM olist_order_payments p
 GROUP BY p.payment_type
 ORDER BY total_transactions DESC
+LIMIT 10
 
 Question: Top 5 thành phố có nhiều người bán nhất?
 SELECT s.seller_city, s.seller_state, COUNT(s.seller_id) AS total_sellers
@@ -381,7 +449,7 @@ JOIN olist_customers c ON o.customer_id = c.customer_id
 WHERE o.order_status = 'delivered'
   AND o.order_delivered_customer_date IS NOT NULL
 GROUP BY c.customer_state
-ORDER BY avg_delivery_days DESC
+LIMIT 27
 
 Question: Người bán nào có doanh thu cao nhất?
 SELECT oi.seller_id, s.seller_city, s.seller_state,
@@ -398,6 +466,7 @@ Question: Có bao nhiêu đơn hàng bị hủy?
 SELECT COUNT(DISTINCT o.order_id) AS canceled_orders
 FROM olist_orders o
 WHERE o.order_status = 'canceled'
+LIMIT 1
 
 Question: Tỷ lệ khách hàng mua trả góp?
 SELECT
@@ -406,6 +475,7 @@ SELECT
   ROUND(COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS installment_percentage
 FROM olist_order_payments p
 WHERE p.payment_type = 'credit_card'
+LIMIT 1
 
 Question: Trend doanh thu theo quý?
 SELECT
@@ -418,3 +488,135 @@ JOIN olist_orders o ON oi.order_id = o.order_id
 WHERE o.order_status = 'delivered'
 GROUP BY year(o.order_purchase_timestamp), quarter(o.order_purchase_timestamp)
 ORDER BY yr, qtr
+LIMIT 20
+
+Question: Phân bổ khách hàng theo bang?
+SELECT c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS total_customers
+FROM olist_customers c
+GROUP BY c.customer_state
+ORDER BY total_customers DESC
+LIMIT 30
+
+Question: Tháng nào trong năm 2017 có nhiều khách hàng mới nhất?
+SELECT date_format(first_purchase, 'yyyy-MM') AS month, COUNT(*) AS new_customers
+FROM (
+  SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase
+  FROM olist_customers c
+  JOIN olist_orders o ON c.customer_id = o.customer_id
+  GROUP BY c.customer_unique_id
+) sub
+WHERE year(first_purchase) = 2017
+GROUP BY date_format(first_purchase, 'yyyy-MM')
+ORDER BY new_customers DESC
+LIMIT 12
+
+Question: Số đơn hàng trung bình mỗi ngày trong năm 2017?
+SELECT ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(order_purchase_timestamp)), 1) AS avg_orders_per_day
+FROM olist_orders
+WHERE year(order_purchase_timestamp) = 2017
+LIMIT 1
+
+Question: Seller mới (chỉ có đơn trong năm 2018) là những ai?
+SELECT DISTINCT oi.seller_id, s.seller_city, s.seller_state
+FROM olist_order_items oi
+JOIN olist_sellers s ON oi.seller_id = s.seller_id
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE year(o.order_purchase_timestamp) = 2018
+  AND oi.seller_id NOT IN (
+    SELECT DISTINCT oi2.seller_id FROM olist_order_items oi2
+    JOIN olist_orders o2 ON oi2.order_id = o2.order_id
+    WHERE year(o2.order_purchase_timestamp) < 2018
+  )
+LIMIT 20
+
+Question: Đơn hàng nào có khoảng cách giữa ngày đặt và ngày giao dài nhất?
+SELECT o.order_id,
+  o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn,
+  o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn,
+  datediff(o.order_delivered_customer_date, o.order_purchase_timestamp) AS delivery_days
+FROM olist_orders o
+WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL
+ORDER BY delivery_days DESC
+LIMIT 10
+
+Question: Xu hướng điểm đánh giá trung bình theo từng quý?
+SELECT year(r.review_creation_date) AS yr, quarter(r.review_creation_date) AS qtr,
+  ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews
+FROM olist_order_reviews r
+GROUP BY year(r.review_creation_date), quarter(r.review_creation_date)
+ORDER BY yr, qtr
+LIMIT 20
+
+Question: Sản phẩm nào được bán với giá cao nhất? Hiển thị danh mục và giá bán.
+SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english,
+  MAX(oi.price) AS max_price_brl
+FROM olist_order_items oi
+JOIN olist_products p ON oi.product_id = p.product_id
+LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY p.product_id, p.product_category_name, t.product_category_name_english
+ORDER BY max_price_brl DESC
+LIMIT 10
+
+Question: Liệt kê 10 sản phẩm có nhiều ảnh nhất?
+SELECT p.product_id, p.product_category_name, p.product_photos_qty
+FROM olist_products p
+ORDER BY p.product_photos_qty DESC
+LIMIT 10
+
+Question: Tổng phí vận chuyển theo từng bang của khách hàng?
+SELECT c.customer_state, ROUND(SUM(oi.freight_value), 2) AS total_freight
+FROM olist_order_items oi
+JOIN olist_orders o ON oi.order_id = o.order_id
+JOIN olist_customers c ON o.customer_id = c.customer_id
+GROUP BY c.customer_state
+ORDER BY total_freight DESC
+LIMIT 30
+
+Question: Doanh thu theo từng quý?
+SELECT year(o.order_purchase_timestamp) AS yr, quarter(o.order_purchase_timestamp) AS qtr,
+  ROUND(SUM(oi.price), 2) AS quarterly_revenue, COUNT(DISTINCT o.order_id) AS total_orders
+FROM olist_order_items oi
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY year(o.order_purchase_timestamp), quarter(o.order_purchase_timestamp)
+ORDER BY yr, qtr
+LIMIT 20
+
+Question: Liệt kê tất cả danh mục sản phẩm cùng tên tiếng Anh?
+SELECT t.product_category_name, t.product_category_name_english
+FROM product_category_name_translation t
+ORDER BY t.product_category_name_english
+LIMIT 100
+
+Question: Người bán nào bán nhiều danh mục sản phẩm nhất?
+SELECT oi.seller_id, s.seller_city, COUNT(DISTINCT p.product_category_name) AS category_count
+FROM olist_order_items oi
+JOIN olist_sellers s ON oi.seller_id = s.seller_id
+JOIN olist_products p ON oi.product_id = p.product_id
+GROUP BY oi.seller_id, s.seller_city
+ORDER BY category_count DESC
+LIMIT 10
+
+Question: Khách hàng ở bang nào có thời gian chờ giao hàng trung bình lâu nhất?
+SELECT c.customer_state,
+  ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_wait_days
+FROM olist_orders o
+JOIN olist_customers c ON o.customer_id = c.customer_id
+WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL
+GROUP BY c.customer_state
+ORDER BY avg_wait_days DESC
+LIMIT 10
+
+Question: Người bán nào có phí vận chuyển trung bình thấp nhất (với ít nhất 50 đơn hàng delivered)?
+SELECT oi.seller_id, s.seller_city, s.seller_state,
+  ROUND(AVG(oi.freight_value), 2) AS avg_freight, COUNT(DISTINCT oi.order_id) AS total_orders
+FROM olist_order_items oi
+JOIN olist_sellers s ON oi.seller_id = s.seller_id
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY oi.seller_id, s.seller_city, s.seller_state
+HAVING COUNT(DISTINCT oi.order_id) >= 50
+ORDER BY avg_freight ASC
+LIMIT 10
