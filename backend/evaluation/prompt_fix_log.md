@@ -141,3 +141,37 @@ Sau 8 vòng lặp đánh giá và tinh chỉnh, hệ thống AI Data Analyst đ�
 
 **Kết luận:** Hệ thống Prompt hiện tại đã đạt đến mức độ **trưởng thành**. AI không chỉ viết SQL chính xác cú pháp, tuân thủ bảng/cột chặt chẽ, mà còn hiểu sâu business logic của Olist (doanh thu phải delivered, đếm khách hàng phải distinct, mở rộng ngữ cảnh báo cáo) để mang lại trải nghiệm truy vấn thân thiện nhất cho người dùng cuối. 
 Dự án có thể đóng băng (`freeze`) `system_prompt.txt` ở phiên bản này và chuyển sang các phase khác (như Frontend, ETL).
+
+---
+
+## 7. Re-open cho bộ 100 câu khó (2026-04-28)
+
+Mặc dù mốc 20 câu đã rất tốt, khi nhìn lại các report 100 mẫu (`20260427_011003`, `20260427_015954`) vẫn còn các lỗi lặp lại, đặc biệt ở nhóm medium/hard:
+
+- **Dư dòng do LIMIT suy diễn quá rộng** (50/100 hoặc 27 khi không cần full coverage).
+- **Thiếu cột theo intent nghiệp vụ** (`total_orders`, `total_value`, `product_category_name`, `avg_score`...).
+- **Alias chưa canonical ở các case khó** (`avg_wait_days`, `total_freight`, `cancel_rate`, `yr`...).
+
+### 7.1 Prompt updates đã áp dụng
+
+Đã cập nhật `backend/prompts/system_prompt.txt` với 2 cụm thay đổi chính:
+
+1. **Siết Rule LIMIT (Rule 15):**
+   - Không có từ khóa "tất cả/toàn bộ/all/every" thì không tự suy diễn LIMIT 27/30/100.
+   - Query có ngụ ý ranking (`top`, `cao nhất`, `nhiều nhất`...) thì ưu tiên LIMIT 10 (hoặc N người dùng yêu cầu), kể cả khi group theo bang/thành phố.
+   - Nếu mơ hồ phạm vi, ưu tiên LIMIT 10 để giảm extra rows.
+
+2. **Thêm Rule 21 — Pre-flight checklist trước khi xuất SQL:**
+   - Tự kiểm LIMIT đúng intent.
+   - Tự kiểm các cột bắt buộc theo pattern hay fail:
+     - Payment stats: `total_transactions` + `total_value`
+     - Revenue theo thời gian: có `total_orders`
+     - Review trend: `avg_score` + `total_reviews`
+   - Tự kiểm alias canonical quan trọng: `avg_wait_days`, `avg_freight`, `total_freight`, `total_value`, `yr`, `qtr`, `cancel_rate`, `product_count`, `new_customers`.
+   - Không thêm cột ngoài intent nếu không thuộc ngoại lệ Rule 12.
+
+### 7.2 Kỳ vọng cho vòng eval 100 câu tiếp theo
+
+- Giảm mạnh lỗi **extra rows** (đặc biệt các case hard đang bị LIMIT 50/100).
+- Giảm lỗi **missing_columns** ở nhóm payment/revenue/review/product.
+- Tăng EX của nhóm medium/hard mà không ảnh hưởng safety/syntax (đang 100%).

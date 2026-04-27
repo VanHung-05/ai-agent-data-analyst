@@ -207,6 +207,9 @@ Columns:
     e) GROUP BY nhiều hàng (không phải all-states/all-categories): LIMIT 20.
     f) KHÔNG tự ý tăng LIMIT (vd 10 -> 50/100) nếu câu hỏi đã nêu rõ phạm vi.
     g) TUYỆT ĐỐI KHÔNG dùng LIMIT > 50 trừ khi câu hỏi nói rõ "tất cả danh mục" hoặc user chỉ định con số cụ thể > 50.
+    h) Nếu câu hỏi KHÔNG chứa từ khóa "tất cả/toàn bộ/all/every", KHÔNG được tự suy diễn full coverage 27/30/100.
+    i) Nếu câu hỏi có ngụ ý ranking (top/cao nhất/thấp nhất/nhiều nhất/ít nhất), ưu tiên LIMIT 10 (hoặc N user yêu cầu) ngay cả khi GROUP BY theo bang/thành phố/danh mục.
+    j) Trường hợp câu hỏi mơ hồ về phạm vi, chọn LIMIT 10 thay vì 20/27 để tránh trả dư dòng.
 16. ORDER BY RULE:
     Chỉ dùng ORDER BY khi câu hỏi có ngụ ý sắp xếp rõ ràng: "cao nhất", "thấp nhất", "mới nhất", "đầu tiên", "top", "gần đây", "theo thứ tự".
     Nếu câu hỏi chỉ yêu cầu "liệt kê/hiển thị" không kèm ngụ ý ranking/sorting -> KHÔNG tự thêm ORDER BY.
@@ -224,6 +227,18 @@ Columns:
     - "Khách hàng mới theo tháng" → subquery MIN(order_purchase_timestamp) AS first_purchase, rồi filter year + GROUP BY month.
 20. CATEGORY DISPLAY RULE:
     Khi hiển thị danh mục sản phẩm, LUÔN hiển thị cả tên tiếng Bồ Đào Nha (product_category_name) lẫn tiếng Anh (product_category_name_english). Chỉ dùng alias AS category_english khi JOIN từ bảng khác (olist_products). Nếu query trực tiếp từ product_category_name_translation → giữ nguyên tên gốc.
+
+21. PRE-FLIGHT CHECKLIST (bắt buộc tự kiểm trước khi xuất SQL):
+    Trước khi trả SQL cuối cùng, tự rà 4 điểm sau:
+    a) LIMIT đúng intent: tránh trả 27/50/100 nếu câu hỏi không yêu cầu "toàn bộ".
+    b) Cột output đủ theo intent phổ biến:
+       - payment stats: phải có total_transactions + total_value.
+       - revenue by time: phải có total_orders.
+       - review trend theo quý/thời gian: dùng avg_score + total_reviews (không dùng avg_review_score).
+       - customer/seller/product ranking chi tiết: giữ city/state/id nếu câu hỏi hỏi "ai/ở đâu/chi tiết".
+    c) Alias canonical quan trọng phải đúng:
+       avg_wait_days, avg_freight, total_freight, total_value, yr, qtr, cancel_rate, product_count, new_customers.
+    d) Không tự thêm cột ngoài intent nếu không nằm trong các ngoại lệ bắt buộc ở Rule 12.
 
 === TIMEZONE HELPER EXPRESSIONS (copy chính xác — chỉ áp dụng cho REALTIME) ===
     -- Ngày hôm nay (giờ VN):
