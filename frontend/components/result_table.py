@@ -38,7 +38,7 @@ def render_result_table(
 
     st.dataframe(
         df.head(max_display),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 

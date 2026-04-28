@@ -26,8 +26,36 @@ class DatabricksConfig:
     catalog: str = os.getenv("DATABRICKS_CATALOG", "hive_metastore")
     schema: str = os.getenv("DATABRICKS_SCHEMA", "default")
 
+    @staticmethod
+    def _is_placeholder(value: str) -> bool:
+        """Detect common placeholder patterns in env credentials."""
+        if not value:
+            return True
+        raw = value.strip()
+        lower = raw.lower()
+        return (
+            raw.startswith("<")
+            or raw.endswith(">")
+            or "điền" in lower
+            or "your-" in lower
+            or "client-id" in lower
+            or "secret-key" in lower
+        )
+
+    def _validate_sp_credentials(self) -> None:
+        """Validate Service Principal credentials before requesting OAuth token."""
+        if self._is_placeholder(self.client_id):
+            raise ValueError(
+                "DATABRICKS_CLIENT_ID đang là placeholder. Vui lòng điền Application ID thật trong .env"
+            )
+        if self._is_placeholder(self.client_secret):
+            raise ValueError(
+                "DATABRICKS_CLIENT_SECRET đang là placeholder. Vui lòng điền OAuth secret thật trong .env"
+            )
+
     def _fetch_oauth_token(self) -> str:
         """Tu dong lay Access Token qua OAuth (tuong tu code TV1 chay)"""
+        self._validate_sp_credentials()
         token_url = f"https://{self.host}/oidc/v1/token"
         payload = {"grant_type": "client_credentials", "scope": "all-apis"}
         response = requests.post(token_url, data=payload, auth=(self.client_id, self.client_secret), timeout=10)

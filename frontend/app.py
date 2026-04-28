@@ -263,29 +263,29 @@ with st.sidebar:
 
     st.divider()
 
-    # Health check
-    health = _cached_health()
-    if health:
-        status = health.get("status", "unknown")
-        services = health.get("services", {})
-        if status == "ok":
-            st.success("🟢 Hệ thống hoạt động bình thường")
-        else:
-            st.warning(f"🟡 Hệ thống: {status}")
-        cols = st.columns(3)
-        for i, (svc, state) in enumerate(services.items()):
-            emoji = "✅" if state == "healthy" else "❌"
-            cols[i % 3].caption(f"{emoji} {svc}")
-        st.session_state.backend_healthy = True
-    else:
-        st.error("🔴 Backend không phản hồi")
-        st.session_state.backend_healthy = False
+    # # Health check
+    # health = _cached_health()
+    # if health:
+    #     status = health.get("status", "unknown")
+    #     services = health.get("services", {})
+    #     if status == "ok":
+    #         st.success("🟢 Hệ thống hoạt động bình thường")
+    #     else:
+    #         st.warning(f"🟡 Hệ thống: {status}")
+    #     cols = st.columns(3)
+    #     for i, (svc, state) in enumerate(services.items()):
+    #         emoji = "✅" if state == "healthy" else "❌"
+    #         cols[i % 3].caption(f"{emoji} {svc}")
+    #     st.session_state.backend_healthy = True
+    # else:
+    #     st.error("🔴 Backend không phản hồi")
+    #     st.session_state.backend_healthy = False
 
-    st.divider()
+    # st.divider()
 
     # Schema info
-    with st.expander("📂 Database Schema", expanded=False):
-        if st.button("Tải schema", key="load_schema_btn", use_container_width=True):
+    with st.expander("Data Info", expanded=False):
+        if st.button("Reload", key="load_schema_btn", width="stretch"):
             _cached_schema.clear()
         schema = _cached_schema()
         if schema:
@@ -300,13 +300,13 @@ with st.sidebar:
                         st.markdown(f"- `{name}`")
             st.caption(f"Catalog: `{schema.get('catalog', '?')}` · Schema: `{schema.get('schema', '?')}`")
         else:
-            st.caption("Không lấy được schema.")
+            st.caption("Không tải được thông tin dữ liệu.")
 
     st.divider()
 
     # Conversations
     st.subheader("💬 Lịch sử chat")
-    if st.button("➕ Chat mới", use_container_width=True):
+    if st.button("➕ Chat mới", width="stretch"):
         _start_new_conversation()
         st.rerun()
 
@@ -329,14 +329,14 @@ with st.sidebar:
             if st.button(
                 title,
                 key=f"conv_{cid}",
-                use_container_width=True,
+                width="stretch",
                 type="primary" if is_active else "secondary",
             ):
                 _load_conversation(cid)
                 st.rerun()
 
     st.divider()
-    if st.button("🗑️ Xóa chat hiện tại", use_container_width=True):
+    if st.button("🗑️ Xóa chat hiện tại", width="stretch"):
         st.session_state.messages = []
         _save_active_messages()
         st.rerun()
