@@ -28,11 +28,14 @@ ai-agent-data-analyst/
 │   ├── services/           ← Multi-Agent logic (Router, SQL, NLG, Visualize, Conversation)
 │   ├── prompts/            ← System prompt cho LLM
 │   └── utils/              ← SQL validator, logger
-├── frontend/               ← Streamlit UI
-│   ├── app.py              ← Entry point (streamlit run)
-│   ├── requirements.txt
-│   ├── components/         ← Chat, Charts, Result Table
-│   └── assets/             ← CSS
+├── frontend-react/         ← React + Vite UI
+│   ├── src/                ← Source code
+│   │   ├── components/     ← Chat, Charts, Result Table
+│   │   ├── pages/          ← Màn hình chính
+│   │   └── api/            ← Axios client
+│   ├── package.json
+│   ├── Dockerfile
+│   └── nginx.conf
 ├── .env.example            ← Mẫu biến môi trường
 ├── docker-compose.yml      ← Chạy bằng Docker (tùy chọn)
 └── SETUP_GUIDE.md          ← File này
@@ -106,26 +109,16 @@ API docs (auto): http://localhost:8000/docs
 ### Bước 3 — Chạy Frontend (Terminal 2)
 
 ```bash
-cd frontend
+cd frontend-react
 
-# Tạo venv (chỉ lần đầu)
-python3 -m venv .venv
+# Cài dependencies (chỉ lần đầu)
+npm install
 
-# Kích hoạt venv
-source .venv/bin/activate        # macOS/Linux
-# .venv\Scripts\activate         # Windows
-
-# Cài dependencies (chỉ lần đầu hoặc khi thay đổi)
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# Chạy Streamlit
-.venv/bin/python -m streamlit run app.py
+# Chạy dev server
+npm run dev
 ```
 
-> **Lưu ý quan trọng:** Dùng `.venv/bin/python -m streamlit run app.py` thay vì `streamlit run app.py` để đảm bảo chạy đúng Python trong venv (tránh xung đột với streamlit cài ở system Python).
-
-Mở http://localhost:8501 → giao diện chat AI Data Analyst.
+Mở http://localhost:5173 → giao diện chat AI Data Analyst.
 
 ---
 
@@ -140,7 +133,7 @@ docker-compose up --build
 |---|---|
 | Backend API | http://localhost:8000 |
 | Backend Docs | http://localhost:8000/docs |
-| Frontend UI | http://localhost:8501 |
+| Frontend UI | http://localhost:80 |
 
 Dừng:
 
@@ -205,14 +198,14 @@ User Question
 
 ### Frontend báo "Backend không phản hồi"
 - Đảm bảo backend đang chạy trên port 8000.
-- Nếu backend ở URL khác: `export BACKEND_URL=http://<host>:<port>/api/v1` trước khi chạy streamlit.
+- Kiểm tra biến `VITE_API_BASE_URL` trong `.env` của `frontend-react/`.
 
 ### Lỗi "No module named ..."
 - Đảm bảo đang trong đúng venv: `which python` phải trỏ vào `.venv/bin/python`.
 - Chạy lại `pip install -r requirements.txt`.
 
-### Lỗi "streamlit" gọi nhầm Python hệ thống
-- Dùng `.venv/bin/python -m streamlit run app.py` thay vì `streamlit run app.py`.
+### Lỗi "Module not found" khi chạy React
+- Chạy lại `npm install` trong `frontend-react/`.
 
 ---
 
@@ -223,5 +216,5 @@ User Question
 | TV1 — Data Engineer | `data/` | Schema, SQL scripts, Databricks config |
 | TV2 — AI/ML Engineer | `backend/services/`, `backend/prompts/`, `backend/utils/` | Multi-Agent logic, LLM, SQL validator |
 | TV3 — Backend Dev | `backend/routers/`, `backend/main.py` | REST API endpoints |
-| TV4 — Frontend Dev | `frontend/` | Streamlit UI |
+| TV4 — Frontend Dev | `frontend-react/` | React + Vite UI, biểu đồ, UX |
 | TV5 — DevOps & QA | `docker-compose.yml`, `Dockerfile`, tests | CI/CD, Docker, testing |

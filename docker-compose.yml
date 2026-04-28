@@ -18,21 +18,28 @@ services:
     networks:
       - ai-analyst-net
 
-  frontend:
+  frontend-react:
     build:
-      context: ./frontend
+      context: ./frontend-react
       dockerfile: Dockerfile
-    container_name: ai-analyst-frontend
+    container_name: ai-analyst-frontend-react
     ports:
-      - "8501:8501"
-    environment:
-      - BACKEND_URL=http://backend:8000/api/v1
+      - "80:80"
     depends_on:
       backend:
         condition: service_healthy
+    environment:
+      - VITE_API_BASE_URL=http://backend:8000/api/v1
     restart: unless-stopped
     networks:
       - ai-analyst-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
 
 networks:
   ai-analyst-net:

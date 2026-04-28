@@ -1,6 +1,6 @@
 # AI Agent - Smart Data Analyst
 
-Trợ lý phân tích dữ liệu thông minh cho bộ dữ liệu Olist E-Commerce, xây dựng theo kiến trúc **Multi-Agent** trên nền **FastAPI + LangChain + Databricks + Streamlit**.
+Trợ lý phân tích dữ liệu thông minh cho bộ dữ liệu Olist E-Commerce, xây dựng theo kiến trúc **Multi-Agent** trên nền **FastAPI + LangChain + Databricks + React**.
 
 ## Giới thiệu
 
@@ -23,8 +23,10 @@ Dự án cho phép người dùng đặt câu hỏi bằng ngôn ngữ tự nhi�
 - Gemini (google-genai wrapper)
 
 ### Frontend
-- Streamlit
-- Plotly
+- React 19 + Vite 8
+- Recharts (biểu đồ)
+- Zustand (state management)
+- TailwindCSS
 
 ### Runtime
 - Docker / Docker Compose
@@ -124,16 +126,15 @@ ai-agent-data-analyst/
 │   ├── prompts/
 │   │   └── system_prompt.txt
 │   └── utils/
-├── frontend/
-│   ├── app.py
-│   ├── requirements.txt
+├── frontend-react/
+│   ├── src/
+│   │   ├── components/   ← Chat, Charts, ResultTable
+│   │   ├── pages/        ← Màn hình chính
+│   │   ├── store/        ← Zustand state
+│   │   └── api/          ← Axios client
+│   ├── package.json
 │   ├── Dockerfile
-│   ├── .streamlit/config.toml
-│   ├── components/
-│   │   ├── chat.py
-│   │   ├── charts.py
-│   │   └── result_table.py
-│   └── assets/styles.css
+│   └── nginx.conf
 ├── docs/
 ├── docker-compose.yml
 ├── .env.example
@@ -159,7 +160,7 @@ docker compose up --build
 ```
 
 ### Truy cập
-- Frontend: `http://localhost:8501`
+- Frontend: `http://localhost:80`
 - Backend: `http://localhost:8000`
 - API docs: `http://localhost:8000/docs`
 
@@ -180,14 +181,12 @@ python -m uvicorn main:app --reload --port 8000
 Mở terminal khác:
 
 ```bash
-cd frontend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-.venv/bin/python -m streamlit run app.py
+cd frontend-react
+npm install
+npm run dev
 ```
 
-> Dùng `.venv/bin/python -m streamlit` để tránh gọi nhầm streamlit từ Python hệ thống.
+Mở http://localhost:5173 → giao diện chat AI Data Analyst (dev mode).
 
 ## API chính
 
