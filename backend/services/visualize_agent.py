@@ -107,7 +107,12 @@ def recommend_chart(
                 spec["reason"] = "Time series detected"
                 return spec
 
-    if any(kw in q for kw in ["tỷ lệ", "phần trăm", "ratio", "percentage", "proportion"]):
+    # Pie: tỉ lệ / phần trăm / proportion — ưu tiên trước bar/ranking
+    pie_kws = [
+        "tỉ lệ", "tỷ lệ", "phần trăm", "ratio", "percentage",
+        "proportion", "share", "cơ cấu", "phân bổ",
+    ]
+    if any(kw in q for kw in pie_kws):
         if len(columns) >= 2 and row_count >= 2:
             spec = _build_chart_spec("pie", question, x_col, y_col)
             ok, _why = _validate_chart_for_data(
@@ -117,7 +122,7 @@ def recommend_chart(
                 spec["reason"] = "Proportions/ratio with multiple categories"
                 return spec
 
-    if any(kw in q for kw in ["top", "so sánh", "ranking", "xếp hạng"]) or "group by" in sql_lower:
+    if any(kw in q for kw in ["top", "so sánh", "ranking", "xếp hạng", "comparison"]):
         if len(columns) >= 2:
             spec = _build_chart_spec("bar", question, x_col, y_col)
             ok, _why = _validate_chart_for_data(
@@ -125,6 +130,17 @@ def recommend_chart(
             )
             if ok:
                 spec["reason"] = "Comparison/ranking detected"
+                return spec
+
+    # group by thuần → bar (nhưng chỉ khi không phải pie)
+    if "group by" in sql_lower:
+        if len(columns) >= 2:
+            spec = _build_chart_spec("bar", question, x_col, y_col)
+            ok, _why = _validate_chart_for_data(
+                "bar", data, columns, spec.get("x"), spec.get("y")
+            )
+            if ok:
+                spec["reason"] = "Grouped aggregation detected"
                 return spec
 
     # === LLM: xử lý case mơ hồ mà heuristic không match ===

@@ -13,6 +13,28 @@ interface DataTableProps {
 const DataTable: React.FC<DataTableProps> = ({ data, rowCount, maxRows = 10 }) => {
   const [currentPage, setCurrentPage] = useState(1);
 
+  const handleExportCSV = () => {
+    if (!data || data.length === 0) return;
+    const columns = Object.keys(data[0] || {});
+    const csvContent = [
+      columns.join(','),
+      ...data.map(row => columns.map(col => {
+        const val = row[col];
+        const strVal = val === null || val === undefined ? '' : String(val);
+        return `"${strVal.replace(/"/g, '""')}"`;
+      }).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'results.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!data || data.length === 0) return null;
 
   const columns = Object.keys(data[0] || {});
@@ -39,10 +61,20 @@ const DataTable: React.FC<DataTableProps> = ({ data, rowCount, maxRows = 10 }) =
             Results
           </span>
         </div>
-        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-          <span className="font-semibold text-green-400">{rowCount || data.length}</span> rows
-          {columns.length > 0 && <span className="ml-1">· {columns.length} cols</span>}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            <span className="font-semibold text-green-400">{rowCount || data.length}</span> rows
+            {columns.length > 0 && <span className="ml-1">· {columns.length} cols</span>}
+          </span>
+          <button
+            onClick={handleExportCSV}
+            className="text-xs px-2 py-1 rounded transition-colors"
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)', border: '1px solid var(--input-border)' }}
+            title="Xuất ra CSV"
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Table */}

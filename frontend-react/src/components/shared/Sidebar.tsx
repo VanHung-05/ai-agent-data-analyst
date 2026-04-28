@@ -3,7 +3,7 @@
  * Hiển thị danh sách phiên hội thoại (sessions), không phải từng câu hỏi
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import type { ChatSession } from '../../store/chatStore';
 
@@ -48,6 +48,24 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, onNewChat }) => {
   const loadSession = useChatStore((s) => s.loadSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [modelName, setModelName] = useState<string>('Đang tải...');
+
+  useEffect(() => {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    fetch(`${baseUrl}/health`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.model) {
+          setModelName(data.model);
+        } else {
+          setModelName('AI Model');
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch health model status', err);
+        setModelName('AI Model');
+      });
+  }, []);
 
   // Sắp xếp mới nhất lên đầu
   const sorted = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -125,8 +143,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, onNewChat }) => {
                             background: isActive
                               ? 'rgba(255,255,255,0.12)'
                               : isHovered
-                              ? 'rgba(255,255,255,0.07)'
-                              : 'transparent',
+                                ? 'rgba(255,255,255,0.07)'
+                                : 'transparent',
                           }}
                           onMouseEnter={() => setHoveredId(session.id)}
                           onMouseLeave={() => setHoveredId(null)}
@@ -186,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, onNewChat }) => {
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
           <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-            Gemini 2.5 Flash · Databricks
+            {modelName}
           </span>
         </div>
       </div>

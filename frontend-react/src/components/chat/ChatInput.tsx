@@ -21,7 +21,7 @@ const ChatInput: React.FC = () => {
   }, [input]);
 
   const handleSubmit = () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim()) return;
     sendMessage(input.trim());
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -34,7 +34,7 @@ const ChatInput: React.FC = () => {
     }
   };
 
-  const canSend = !!input.trim() && !isLoading;
+  const canSend = !!input.trim();
 
   return (
     <div
@@ -47,7 +47,7 @@ const ChatInput: React.FC = () => {
       <div className="max-w-3xl mx-auto">
         {/* Input box */}
         <div
-          className="flex items-end gap-2 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-lg"
+          className="flex items-end gap-2 rounded-2xl px-3 sm:px-4 py-2 shadow-lg"
           style={{
             background: 'var(--input-bg)',
             border: '1px solid var(--input-border)',
@@ -59,9 +59,9 @@ const ChatInput: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isLoading}
+            disabled={false}
             placeholder="Hỏi về dữ liệu..."
-            className="flex-1 resize-none bg-transparent outline-none text-sm leading-relaxed"
+            className="flex-1 resize-none bg-transparent outline-none text-sm leading-relaxed py-1.5"
             style={{
               color: 'var(--text-primary)',
               maxHeight: '160px',
@@ -82,7 +82,7 @@ const ChatInput: React.FC = () => {
             }}
             aria-label="Gửi"
           >
-            {isLoading ? (
+            {isLoading && !input.trim() ? (
               <svg className="w-4 h-4 spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
                   d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M5.64 18.36l-.71.71m12.02 0-.71-.71M5.64 5.64l-.71-.71" />

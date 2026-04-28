@@ -31,26 +31,54 @@ const UserAvatar = () => (
   </div>
 );
 
+const renderMarkdownText = (text: string) => {
+  if (!text) return null;
+  // Tách text dựa trên syntax **bold**
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-semibold text-white">{part.slice(2, -2)}</strong>;
+    }
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
+};
+
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
-  const [displayedText, setDisplayedText] = useState('');
+  const [displayedText, setDisplayedText] = useState(
+    message.status === 'success' ? message.content : ''
+  );
   const [isTyping, setIsTyping] = useState(false);
+  const wasPendingRef = React.useRef(message.status === 'pending');
   const isUser = message.role === 'user';
 
   useEffect(() => {
     if (message.role === 'assistant' && message.status === 'pending') {
-      // Khi đang xử lý: giữ text rỗng, chỉ hiện dots animation
-      setIsTyping(false);
-      setDisplayedText('');
-    } else if (message.role === 'assistant') {
+      // Khi đang xử lý: hiện luồng event realtime
+      wasPendingRef.current = true;
       setIsTyping(false);
       setDisplayedText(message.content);
+    } else if (message.role === 'assistant' && message.status === 'success') {
+      if (wasPendingRef.current) {
+        // Mới chuyển từ pending -> success
+        setIsTyping(true);
+        setDisplayedText('');
+        wasPendingRef.current = false;
+      } else if (!isTyping) {
+        // Cũ, đã load sẵn
+        setDisplayedText(message.content);
+      }
     } else {
+      // User message
       setDisplayedText(message.content);
     }
-  }, [message]);
+  }, [message.content, message.status, message.role, isTyping]);
 
   useEffect(() => {
-    if (!isTyping || displayedText.length >= message.content.length) return;
+    if (!isTyping) return;
+    if (displayedText.length >= message.content.length) {
+      setIsTyping(false);
+      return;
+    }
     const timer = setTimeout(() => {
       setDisplayedText((prev) => prev + message.content[prev.length]);
     }, 10);
@@ -84,32 +112,33 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         ) : (
           /* AI message — full width, no bubble */
           <div className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-            {/* Đang suy nghĩ — chỉ hiện khi pending */}
+            {/* Đang xử lý — hiện progress events real-time */}
             {message.status === 'pending' && (
-              <div className="flex items-center gap-2 py-1">
-                <div className="flex items-center gap-1">
-                  {[0, 160, 320].map((delay) => (
-                    <span
-                      key={delay}
-                      className="w-2 h-2 rounded-full animate-bounce"
-                      style={{
-                        background: 'var(--accent)',
-                        animationDelay: `${delay}ms`,
-                        animationDuration: '1s',
-                      }}
-                    />
-                  ))}
+              <div className="py-1">
+                {/* Progress text + 3 chấm nhảy cùng một hàng */}
+                <div className="flex items-center gap-2 text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="flex items-center gap-1 flex-shrink-0">
+                    {[0, 160, 320].map((delay) => (
+                      <span
+                        key={delay}
+                        className="w-1.5 h-1.5 rounded-full animate-bounce"
+                        style={{
+                          background: 'var(--accent)',
+                          animationDelay: `${delay}ms`,
+                          animationDuration: '1s',
+                        }}
+                      />
+                    ))}
+                  </span>
+                  {displayedText && <span className="whitespace-pre-wrap">{displayedText}</span>}
                 </div>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Đang suy nghĩ...
-                </span>
               </div>
             )}
 
             {/* Text — chỉ hiện khi không pending và có nội dung */}
             {message.status !== 'pending' && displayedText && (
               <p className="whitespace-pre-wrap break-words">
-                {displayedText}
+                {renderMarkdownText(displayedText)}
                 {isTyping && <span className="cursor-blink ml-0.5">▊</span>}
               </p>
             )}

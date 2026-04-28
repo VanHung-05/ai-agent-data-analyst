@@ -15,7 +15,7 @@ export interface VisualizationRecommendation {
   value?: string;
   reason?: string;
   routed_agent?: string;
-  [key: string]: any; // Allow extra fields
+  [key: string]: unknown; // Allow extra fields
 }
 
 export interface QueryResponse {
@@ -26,7 +26,7 @@ export interface QueryResponse {
   generated_sql: string | null;
   data: Record<string, any>[];
   row_count: number;
-  visualization_recommendation: Record<string, any>;
+  visualization_recommendation: VisualizationRecommendation;
   error: string | null;
 }
 
@@ -41,6 +41,17 @@ export interface ResultEvent {
   data: QueryResponse;
 }
 
+export interface ChartRecommendationEvent {
+  type: 'chart_recommendation';
+  data: VisualizationRecommendation;
+}
+
+export interface AnswerEvent {
+  type: 'answer';
+  text?: string;
+  delta?: string;
+}
+
 export interface ErrorEvent {
   type: 'error';
   error: string;
@@ -50,7 +61,13 @@ export interface DoneEvent {
   type: 'done';
 }
 
-export type StreamEvent = StepEvent | ResultEvent | ErrorEvent | DoneEvent;
+export type StreamEvent =
+  | StepEvent
+  | ResultEvent
+  | ChartRecommendationEvent
+  | AnswerEvent
+  | ErrorEvent
+  | DoneEvent;
 
 export interface Message {
   id: string;
@@ -60,7 +77,7 @@ export interface Message {
   data?: Record<string, any>[];
   chart?: VisualizationRecommendation;
   timestamp: number;
-  status: 'pending' | 'success' | 'error';
+  status: 'queued' | 'pending' | 'success' | 'error';
   error?: string;
   rowCount?: number;
 }

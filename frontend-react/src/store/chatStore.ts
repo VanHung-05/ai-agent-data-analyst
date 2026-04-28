@@ -108,6 +108,7 @@ export const useChatStore = create<ChatStore>()(
             updatedAt: now,
           };
 
+          // Nếu chưa có trong list thì thêm vào đầu, nếu có rồi thì update
           const newSessions =
             existingIdx >= 0
               ? state.sessions.map((s, i) =>
@@ -152,6 +153,7 @@ export const useChatStore = create<ChatStore>()(
                 : now,
             updatedAt: now,
           };
+          // Nếu chưa có trong list thì thêm vào đầu, nếu có rồi thì update
           const savedSessions =
             existingIdx >= 0
               ? state.sessions.map((s, i) =>
@@ -181,10 +183,23 @@ export const useChatStore = create<ChatStore>()(
         }
       },
 
-      deleteSession: (sessionId) =>
-        set((state) => ({
-          sessions: state.sessions.filter((s) => s.id !== sessionId),
-        })),
+      deleteSession: (sessionId) => {
+        const state = get();
+        const newSessions = state.sessions.filter((s) => s.id !== sessionId);
+        
+        if (state.currentSessionId === sessionId) {
+          // Nếu đang mở phiên bị xóa, reset thành phiên mới
+          set({
+            sessions: newSessions,
+            currentSessionId: generateId(),
+            messages: [],
+            error: null,
+            isLoading: false,
+          });
+        } else {
+          set({ sessions: newSessions });
+        }
+      },
 
       /* ── State ── */
       setLoading: (loading) => set({ isLoading: loading }),
