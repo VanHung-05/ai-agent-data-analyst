@@ -1,0 +1,4392 @@
+{
+  "generated_at": "2026-04-28T18:30:52.602831+00:00",
+  "dataset_path": "/Users/macbook/Documents/HK2_Nam3(2526)/Theory/Cloud/ai-agent-data-analyst/backend/evaluation/eval_dataset.json",
+  "generator_mode": "sql_only",
+  "api_url": null,
+  "summary": {
+    "total_samples": 100,
+    "total_input_samples": 100,
+    "evaluated_samples": 100,
+    "skipped_samples": 0,
+    "skipped_case_ids": [],
+    "execution_success_rate": 0.59,
+    "safety_pass_rate": 1.0,
+    "semantic_match_rate": 0.73,
+    "syntax_pass_rate": 1.0,
+    "performance_pass_rate": 1.0,
+    "average_semantic_score": 0.8715,
+    "overall_weighted_score": 0.8308,
+    "benchmark_metrics": {
+      "EM_mean": 0.21,
+      "CM_mean": 0.8302,
+      "EX_mean": 0.59,
+      "EX_partial_mean": 0.7859,
+      "VES_mean": 0.5804
+    },
+    "ex_failure_dashboard": {
+      "ex_failed_total": 41,
+      "by_group": {
+        "alias_only": {
+          "count": 0,
+          "rate_over_ex_failed": 0.0,
+          "sample_ids": []
+        },
+        "limit_mismatch": {
+          "count": 4,
+          "rate_over_ex_failed": 0.0976,
+          "sample_ids": [
+            "aggregate_009",
+            "join_006",
+            "payment_003",
+            "geography_002"
+          ]
+        },
+        "semantic_mismatch": {
+          "count": 37,
+          "rate_over_ex_failed": 0.9024,
+          "sample_ids": [
+            "aggregate_010",
+            "join_009",
+            "join_010",
+            "delivery_001",
+            "delivery_002",
+            "delivery_004",
+            "review_001",
+            "review_002",
+            "review_003",
+            "payment_002",
+            "payment_004",
+            "payment_005",
+            "geography_003",
+            "geography_005",
+            "realtime_006"
+          ]
+        }
+      },
+      "top_missing_columns": [
+        {
+          "column": "category",
+          "count": 4
+        },
+        {
+          "column": "customer_city",
+          "count": 2
+        },
+        {
+          "column": "customer_state",
+          "count": 2
+        },
+        {
+          "column": "total_delivered",
+          "count": 2
+        },
+        {
+          "column": "total_reviews",
+          "count": 2
+        },
+        {
+          "column": "seller_city",
+          "count": 2
+        },
+        {
+          "column": "seller_state",
+          "count": 2
+        },
+        {
+          "column": "total_orders",
+          "count": 2
+        },
+        {
+          "column": "product_count",
+          "count": 2
+        },
+        {
+          "column": "late_deliveries",
+          "count": 1
+        }
+      ]
+    },
+    "benchmark_target_pass": {
+      "EM_gte_0.8": false,
+      "CM_gte_0.8": true,
+      "EX_gte_0.9": false,
+      "VES_gte_1.0": false
+    },
+    "targets": {
+      "execution_success_rate_gte": 0.9,
+      "safety_pass_rate_eq": 1.0,
+      "semantic_match_rate_gte": 0.8,
+      "overall_weighted_score_gte": 0.85
+    },
+    "target_pass": {
+      "execution_success_rate": false,
+      "safety_pass_rate": true,
+      "semantic_match_rate": false,
+      "overall_weighted_score": false
+    }
+  },
+  "cases": [
+    {
+      "id": "basic_select_001",
+      "question": "Liệt kê 10 đơn hàng đầu tiên trong hệ thống theo thời gian đặt hàng?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT order_id, customer_id, order_status, order_purchase_timestamp\nFROM olist_orders\nORDER BY order_purchase_timestamp ASC\nLIMIT 10",
+      "gold_sql": "SELECT o.order_id, o.customer_id, o.order_status, o.order_purchase_timestamp FROM olist_orders o ORDER BY o.order_purchase_timestamp ASC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_002",
+      "question": "Có bao nhiêu khách hàng trong hệ thống?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS total_customers\nFROM olist_customers\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS total_customers FROM olist_customers LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8571,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9943
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_003",
+      "question": "Liệt kê tất cả trạng thái đơn hàng có trong hệ thống?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT DISTINCT order_status FROM olist_orders\nUNION\nSELECT DISTINCT order_status FROM bronze_rt_orders_sim\nLIMIT 100",
+      "gold_sql": "SELECT DISTINCT order_status FROM olist_orders o UNION SELECT DISTINCT order_status FROM bronze_rt_orders_sim LIMIT 1000",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8571,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_004",
+      "question": "Liệt kê 10 sản phẩm có nhiều ảnh nhất?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT product_id, product_category_name, product_photos_qty\nFROM olist_products\nORDER BY product_photos_qty DESC\nLIMIT 10",
+      "gold_sql": "SELECT p.product_id, p.product_category_name, p.product_photos_qty FROM olist_products p ORDER BY p.product_photos_qty DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9739
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_005",
+      "question": "Liệt kê 10 người bán đầu tiên tại thành phố São Paulo (SP)?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT seller_id, seller_zip_code_prefix, seller_city, seller_state\nFROM olist_sellers\nWHERE seller_city = 'sao paulo' AND seller_state = 'SP'\nLIMIT 10",
+      "gold_sql": "SELECT s.seller_id, s.seller_city, s.seller_state, s.seller_zip_code_prefix FROM olist_sellers s WHERE s.seller_city = 'sao paulo' AND s.seller_state = 'SP' LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_006",
+      "question": "Hiển thị thông tin 5 đánh giá có điểm thấp nhất (1 sao)?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT review_id, order_id, review_score, review_comment_message, review_creation_date\nFROM olist_order_reviews\nWHERE review_score = 1\nLIMIT 5",
+      "gold_sql": "SELECT r.review_id, r.order_id, r.review_score, r.review_comment_message, r.review_creation_date FROM olist_order_reviews r WHERE r.review_score = 1 LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_007",
+      "question": "Có bao nhiêu đơn hàng bị hủy trong hệ thống?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT COUNT(DISTINCT order_id) AS canceled_orders\nFROM olist_orders\nWHERE order_status = 'canceled'\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(order_id) AS canceled_orders FROM olist_orders WHERE order_status = 'canceled' LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8364,
+        "CM_detail": {
+          "SELECT": 0.8,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_008",
+      "question": "Liệt kê tất cả phương thức thanh toán có trong hệ thống?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT DISTINCT payment_type\nFROM olist_order_payments\nLIMIT 100",
+      "gold_sql": "SELECT DISTINCT p.payment_type FROM olist_order_payments p ORDER BY p.payment_type LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.6667,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9811
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_009",
+      "question": "Hiển thị 10 đơn hàng gần đây nhất theo thời gian mua (dữ liệu lịch sử)?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT order_id, customer_id, order_status, order_purchase_timestamp\nFROM olist_orders\nORDER BY order_purchase_timestamp DESC\nLIMIT 10",
+      "gold_sql": "SELECT o.order_id, o.customer_id, o.order_status, o.order_purchase_timestamp FROM olist_orders o ORDER BY o.order_purchase_timestamp DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9726
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "basic_select_010",
+      "question": "Liệt kê tất cả danh mục sản phẩm cùng tên tiếng Anh?",
+      "category": "basic_select",
+      "difficulty": "easy",
+      "generated_sql": "SELECT product_category_name, product_category_name_english\nFROM product_category_name_translation\nORDER BY product_category_name_english\nLIMIT 100",
+      "gold_sql": "SELECT t.product_category_name, t.product_category_name_english FROM product_category_name_translation t ORDER BY t.product_category_name_english LIMIT 100",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_001",
+      "question": "Tổng doanh thu từ các đơn hàng đã giao thành công?",
+      "category": "aggregate",
+      "difficulty": "medium",
+      "generated_sql": "SELECT ROUND(SUM(oi.price), 2) AS total_revenue\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nLIMIT 1",
+      "gold_sql": "SELECT ROUND(SUM(oi.price), 2) AS total_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9231,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9726
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_002",
+      "question": "Số đơn hàng theo từng trạng thái?",
+      "category": "aggregate",
+      "difficulty": "easy",
+      "generated_sql": "SELECT order_status, COUNT(order_id) AS total_orders\nFROM olist_orders\nGROUP BY order_status\nORDER BY total_orders DESC\nLIMIT 20",
+      "gold_sql": "SELECT o.order_status, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o GROUP BY o.order_status ORDER BY total_orders DESC LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9444,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9787
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_003",
+      "question": "Doanh thu trung bình mỗi đơn hàng là bao nhiêu?",
+      "category": "aggregate",
+      "difficulty": "medium",
+      "generated_sql": "SELECT ROUND(SUM(oi.price) / COUNT(DISTINCT o.order_id), 2) AS avg_revenue_per_order\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nLIMIT 1",
+      "gold_sql": "SELECT ROUND(AVG(order_revenue), 2) AS avg_revenue_per_order FROM (SELECT oi.order_id, SUM(oi.price) AS order_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.order_id) subq LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.6,
+        "CM_detail": {
+          "SELECT": 0.4,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9669
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_004",
+      "question": "Số đơn hàng theo tháng trong năm 2017?",
+      "category": "aggregate",
+      "difficulty": "medium",
+      "generated_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_orders o\nWHERE year(o.order_purchase_timestamp) = 2017\nGROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')\nORDER BY month\nLIMIT 20",
+      "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o WHERE year(o.order_purchase_timestamp) = 2017 GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_005",
+      "question": "Phương thức thanh toán nào phổ biến nhất?",
+      "category": "aggregate",
+      "difficulty": "easy",
+      "generated_sql": "SELECT p.payment_type, COUNT(*) AS total_transactions, ROUND(SUM(p.payment_value), 2) AS total_value\nFROM olist_order_payments p\nGROUP BY p.payment_type\nORDER BY total_transactions DESC\nLIMIT 10",
+      "gold_sql": "SELECT p.payment_type, COUNT(*) AS total_transactions, ROUND(SUM(p.payment_value), 2) AS total_value FROM olist_order_payments p GROUP BY p.payment_type ORDER BY total_transactions DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_006",
+      "question": "Doanh thu theo từng quý?",
+      "category": "aggregate",
+      "difficulty": "medium",
+      "generated_sql": "SELECT year(o.order_purchase_timestamp) AS yr, quarter(o.order_purchase_timestamp) AS qtr,\n  ROUND(SUM(oi.price), 2) AS quarterly_revenue, COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY year(o.order_purchase_timestamp), quarter(o.order_purchase_timestamp)\nORDER BY yr, qtr\nLIMIT 20",
+      "gold_sql": "SELECT year(o.order_purchase_timestamp) AS yr, quarter(o.order_purchase_timestamp) AS qtr, ROUND(SUM(oi.price), 2) AS quarterly_revenue, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY year(o.order_purchase_timestamp), quarter(o.order_purchase_timestamp) ORDER BY yr, qtr LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_007",
+      "question": "Tổng phí vận chuyển theo từng bang của khách hàng?",
+      "category": "aggregate",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_state, ROUND(SUM(oi.freight_value), 2) AS total_freight\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nJOIN olist_customers c ON o.customer_id = c.customer_id\nGROUP BY c.customer_state\nORDER BY total_freight DESC\nLIMIT 30",
+      "gold_sql": "SELECT c.customer_state, ROUND(SUM(oi.freight_value), 2) AS total_freight FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_freight DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_008",
+      "question": "Trung bình số sản phẩm (items) trong mỗi đơn hàng?",
+      "category": "aggregate",
+      "difficulty": "medium",
+      "generated_sql": "SELECT ROUND(COUNT(oi.order_item_id) / COUNT(DISTINCT oi.order_id), 2) AS avg_items_per_order\nFROM olist_order_items oi\nLIMIT 1",
+      "gold_sql": "SELECT ROUND(AVG(item_count), 2) AS avg_items_per_order FROM (SELECT order_id, COUNT(order_item_id) AS item_count FROM olist_order_items GROUP BY order_id) subq LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.3778,
+        "CM_detail": {
+          "SELECT": 0.4444,
+          "FROM": 1.0,
+          "GROUP BY": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9756
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "aggregate_009",
+      "question": "Tổng số đánh giá theo từng điểm số (1-5)?",
+      "category": "aggregate",
+      "difficulty": "easy",
+      "generated_sql": "SELECT review_score, COUNT(review_id) AS total_reviews\nFROM olist_order_reviews\nGROUP BY review_score\nORDER BY review_score ASC\nLIMIT 5",
+      "gold_sql": "SELECT r.review_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r GROUP BY r.review_score ORDER BY r.review_score LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.9,
+        "EM": 0.0,
+        "CM": 0.8333,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.5,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.8333,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "limit_subset_detected": true,
+        "note": "gen (5 rows) là tập con hợp lệ của gold (7 rows) — có thể do AI thêm LIMIT ngầm định. Precision = 1.0.",
+        "col_score": 1.0,
+        "row_f1": 0.8333,
+        "row_count_generated": 5,
+        "row_count_gold": 7,
+        "rows_matched": 5,
+        "rows_missing_in_gen": 2,
+        "rows_extra_in_gen": 0,
+        "sample_unmatched_gold_rows": [
+          {
+            "review_score": "4",
+            "total_reviews": "19142"
+          },
+          {
+            "review_score": "5",
+            "total_reviews": "57328"
+          }
+        ]
+      }
+    },
+    {
+      "id": "aggregate_010",
+      "question": "Tổng doanh thu và phí vận chuyển theo năm?",
+      "category": "aggregate",
+      "difficulty": "medium",
+      "generated_sql": "SELECT \n  year(o.order_purchase_timestamp) AS yr, \n  ROUND(SUM(oi.price), 2) AS total_revenue, \n  ROUND(SUM(oi.freight_value), 2) AS total_freight, \n  COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY year(o.order_purchase_timestamp)\nORDER BY yr\nLIMIT 10",
+      "gold_sql": "SELECT year(o.order_purchase_timestamp) AS yr, ROUND(SUM(oi.price), 2) AS total_revenue, ROUND(SUM(oi.freight_value), 2) AS total_freight FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY year(o.order_purchase_timestamp) ORDER BY yr LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9407,
+        "CM_detail": {
+          "SELECT": 0.7333,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 1.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "extra_columns": [
+          "total_orders"
+        ],
+        "generated_columns": [
+          "yr",
+          "total_revenue",
+          "total_freight",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "yr",
+          "total_revenue",
+          "total_freight"
+        ],
+        "value_based_col_mapping": {
+          "yr": "yr",
+          "total_revenue": "total_revenue",
+          "total_freight": "total_freight"
+        },
+        "col_score": 1.0,
+        "row_f1": 1.0,
+        "row_count_generated": 3,
+        "row_count_gold": 3,
+        "rows_matched": 3,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "join_001",
+      "question": "Top 10 danh mục sản phẩm có doanh thu cao nhất (hiển thị tên tiếng Anh)?",
+      "category": "join",
+      "difficulty": "medium",
+      "generated_sql": "SELECT t.product_category_name_english AS category_english, ROUND(SUM(oi.price), 2) AS revenue\nFROM olist_order_items oi\nJOIN olist_products p ON oi.product_id = p.product_id\nJOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY t.product_category_name_english\nORDER BY revenue DESC\nLIMIT 10",
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(SUM(oi.price), 2) AS revenue FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY t.product_category_name_english ORDER BY revenue DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9506,
+        "CM_detail": {
+          "SELECT": 0.7778,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9587
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "category_english",
+          "revenue"
+        ],
+        "gold_columns": [
+          "category",
+          "revenue"
+        ],
+        "value_based_col_mapping": {
+          "category": "category_english",
+          "revenue": "revenue"
+        }
+      }
+    },
+    {
+      "id": "join_002",
+      "question": "Điểm đánh giá trung bình theo từng bang của khách hàng?",
+      "category": "join",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews\nFROM olist_order_reviews r\nJOIN olist_orders o ON r.order_id = o.order_id\nJOIN olist_customers c ON o.customer_id = c.customer_id\nGROUP BY c.customer_state\nORDER BY avg_score DESC\nLIMIT 27",
+      "gold_sql": "SELECT c.customer_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY avg_score DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9286,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9582
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "join_003",
+      "question": "Người bán nào có doanh thu cao nhất? Cho biết thành phố và bang của họ?",
+      "category": "join",
+      "difficulty": "medium",
+      "generated_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT oi.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY oi.seller_id, s.seller_city, s.seller_state\nORDER BY total_revenue DESC\nLIMIT 10",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY total_revenue DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9919
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "join_004",
+      "question": "Thời gian giao hàng trung bình theo từng bang của khách hàng?",
+      "category": "join",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_state, \n  ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_wait_days\nFROM olist_orders o\nJOIN olist_customers c ON o.customer_id = c.customer_id\nWHERE o.order_status = 'delivered' \n  AND o.order_delivered_customer_date IS NOT NULL\nGROUP BY c.customer_state\nORDER BY avg_wait_days DESC\nLIMIT 27",
+      "gold_sql": "SELECT c.customer_state, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_delivery_days FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY c.customer_state ORDER BY avg_delivery_days DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8259,
+        "CM_detail": {
+          "SELECT": 0.8,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.939
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "customer_state",
+          "avg_wait_days"
+        ],
+        "gold_columns": [
+          "customer_state",
+          "avg_delivery_days"
+        ],
+        "value_based_col_mapping": {
+          "customer_state": "customer_state",
+          "avg_delivery_days": "avg_wait_days"
+        }
+      }
+    },
+    {
+      "id": "join_005",
+      "question": "Top 5 thành phố có nhiều người bán nhất?",
+      "category": "join",
+      "difficulty": "easy",
+      "generated_sql": "SELECT s.seller_city, s.seller_state, COUNT(s.seller_id) AS total_sellers\nFROM olist_sellers s\nGROUP BY s.seller_city, s.seller_state\nORDER BY total_sellers DESC\nLIMIT 5",
+      "gold_sql": "SELECT s.seller_city, s.seller_state, COUNT(s.seller_id) AS total_sellers FROM olist_sellers s GROUP BY s.seller_city, s.seller_state ORDER BY total_sellers DESC LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "join_006",
+      "question": "Sản phẩm có giá bán cao nhất thuộc danh mục nào (tên tiếng Anh)?",
+      "category": "join",
+      "difficulty": "medium",
+      "generated_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english, MAX(oi.price) AS max_price_brl\nFROM olist_order_items oi\nJOIN olist_products p ON oi.product_id = p.product_id\nLEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY p.product_id, p.product_category_name, t.product_category_name_english\nORDER BY max_price_brl DESC\nLIMIT 1",
+      "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english, MAX(oi.price) AS max_item_price_brl FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY max_item_price_brl DESC LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.6,
+        "EM": 0.0,
+        "CM": 0.821,
+        "CM_detail": {
+          "SELECT": 0.7778,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.3333,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "product_id",
+          "product_category_name",
+          "category_english",
+          "max_price_brl"
+        ],
+        "gold_columns": [
+          "product_id",
+          "product_category_name",
+          "category_english",
+          "max_item_price_brl"
+        ],
+        "value_based_col_mapping": {
+          "product_id": "product_id",
+          "product_category_name": "product_category_name",
+          "category_english": "category_english",
+          "max_item_price_brl": "max_price_brl"
+        },
+        "limit_subset_detected": true,
+        "note": "gen (1 rows) là tập con hợp lệ của gold (5 rows) — có thể do AI thêm LIMIT ngầm định. Precision = 1.0.",
+        "col_score": 1.0,
+        "row_f1": 0.3333,
+        "row_count_generated": 1,
+        "row_count_gold": 5,
+        "rows_matched": 1,
+        "rows_missing_in_gen": 4,
+        "rows_extra_in_gen": 0,
+        "sample_unmatched_gold_rows": [
+          {
+            "product_id": "69c590f7ffc7bf8db97190b6cb6ed62e",
+            "product_category_name": "pcs",
+            "category_english": "computers",
+            "max_item_price_brl": "6729.00"
+          },
+          {
+            "product_id": "1bdf5e6731585cf01aa8169c7028d6ad",
+            "product_category_name": "artes",
+            "category_english": "art",
+            "max_item_price_brl": "6499.00"
+          },
+          {
+            "product_id": "a6492cc69376c469ab6f61d8f44de961",
+            "product_category_name": "eletroportateis",
+            "category_english": "small_appliances",
+            "max_item_price_brl": "4799.00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "join_007",
+      "question": "Số đơn hàng theo từng bang của khách hàng?",
+      "category": "join",
+      "difficulty": "easy",
+      "generated_sql": "SELECT c.customer_state, COUNT(o.order_id) AS total_orders\nFROM olist_orders o\nJOIN olist_customers c ON o.customer_id = c.customer_id\nGROUP BY c.customer_state\nORDER BY total_orders DESC\nLIMIT 30",
+      "gold_sql": "SELECT c.customer_state, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_orders DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9524,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "join_008",
+      "question": "Doanh thu theo từng bang của người bán?",
+      "category": "join",
+      "difficulty": "medium",
+      "generated_sql": "SELECT s.seller_state, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY s.seller_state\nORDER BY total_revenue DESC\nLIMIT 30",
+      "gold_sql": "SELECT s.seller_state, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE o.order_status = 'delivered' GROUP BY s.seller_state ORDER BY total_revenue DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9111,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 0.2,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "join_009",
+      "question": "Top 10 khách hàng có tổng chi tiêu cao nhất?",
+      "category": "join",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_unique_id, ROUND(SUM(oi.price + oi.freight_value), 2) AS total_spent\nFROM olist_customers c\nJOIN olist_orders o ON c.customer_id = o.customer_id\nJOIN olist_order_items oi ON o.order_id = oi.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY c.customer_unique_id\nORDER BY total_spent DESC\nLIMIT 10",
+      "gold_sql": "SELECT c.customer_unique_id, c.customer_city, c.customer_state, ROUND(SUM(oi.price + oi.freight_value), 2) AS total_spent FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_unique_id, c.customer_city, c.customer_state ORDER BY total_spent DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.7,
+        "EM": 0.0,
+        "CM": 0.6444,
+        "CM_detail": {
+          "SELECT": 0.8,
+          "FROM": 0.0,
+          "JOIN": 0.2,
+          "WHERE": 1.0,
+          "GROUP BY": 0.3333,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.5,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "customer_city",
+          "customer_state"
+        ],
+        "generated_columns": [
+          "customer_unique_id",
+          "total_spent"
+        ],
+        "gold_columns": [
+          "customer_unique_id",
+          "customer_city",
+          "customer_state",
+          "total_spent"
+        ],
+        "value_based_col_mapping": {
+          "customer_unique_id": "customer_unique_id",
+          "total_spent": "total_spent"
+        },
+        "col_score": 0.5,
+        "row_f1": 1.0,
+        "row_count_generated": 10,
+        "row_count_gold": 10,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "join_010",
+      "question": "Tổng giá trị thanh toán theo từng phương thức và bang khách hàng?",
+      "category": "join",
+      "difficulty": "hard",
+      "generated_sql": "SELECT c.customer_state, p.payment_type, ROUND(SUM(p.payment_value), 2) AS total_value, COUNT(p.order_id) AS total_transactions\nFROM olist_order_payments p\nJOIN olist_orders o ON p.order_id = o.order_id\nJOIN olist_customers c ON o.customer_id = c.customer_id\nGROUP BY c.customer_state, p.payment_type\nORDER BY c.customer_state, total_value DESC\nLIMIT 100",
+      "gold_sql": "SELECT c.customer_state, p.payment_type, ROUND(SUM(p.payment_value), 2) AS total_payment FROM olist_order_payments p JOIN olist_orders o ON p.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state, p.payment_type ORDER BY c.customer_state, total_payment DESC LIMIT 50",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.8,
+        "EM": 0.0,
+        "CM": 0.7381,
+        "CM_detail": {
+          "SELECT": 0.5833,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.5,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.6667,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "extra_columns": [
+          "total_transactions"
+        ],
+        "generated_columns": [
+          "customer_state",
+          "payment_type",
+          "total_value",
+          "total_transactions"
+        ],
+        "gold_columns": [
+          "customer_state",
+          "payment_type",
+          "total_payment"
+        ],
+        "value_based_col_mapping": {
+          "customer_state": "customer_state",
+          "payment_type": "payment_type",
+          "total_payment": "total_value"
+        },
+        "col_score": 1.0,
+        "row_f1": 0.6667,
+        "row_count_generated": 100,
+        "row_count_gold": 50,
+        "rows_matched": 50,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 50
+      }
+    },
+    {
+      "id": "delivery_001",
+      "question": "Tỷ lệ giao hàng trễ là bao nhiêu phần trăm?",
+      "category": "delivery",
+      "difficulty": "medium",
+      "generated_sql": "SELECT \n  ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_percentage\nFROM olist_orders o\nWHERE o.order_status = 'delivered'\n  AND o.order_delivered_customer_date IS NOT NULL\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_deliveries, COUNT(*) AS total_delivered, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_percentage FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.6,
+        "EM": 0.0,
+        "CM": 0.8636,
+        "CM_detail": {
+          "SELECT": 0.875,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.3333,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "late_deliveries",
+          "total_delivered"
+        ],
+        "generated_columns": [
+          "late_percentage"
+        ],
+        "gold_columns": [
+          "late_deliveries",
+          "total_delivered",
+          "late_percentage"
+        ],
+        "value_based_col_mapping": {
+          "late_percentage": "late_percentage"
+        },
+        "col_score": 0.3333,
+        "row_f1": 1.0,
+        "row_count_generated": 1,
+        "row_count_gold": 1,
+        "rows_matched": 1,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "delivery_002",
+      "question": "Thời gian giao hàng nhanh nhất và lâu nhất là bao nhiêu ngày?",
+      "category": "delivery",
+      "difficulty": "medium",
+      "generated_sql": "SELECT \n  MIN(datediff(order_delivered_customer_date, order_purchase_timestamp)) AS min_delivery_days,\n  MAX(datediff(order_delivered_customer_date, order_purchase_timestamp)) AS max_delivery_days\nFROM olist_orders\nWHERE order_status = 'delivered' \n  AND order_delivered_customer_date IS NOT NULL \n  AND order_purchase_timestamp IS NOT NULL\nLIMIT 1",
+      "gold_sql": "SELECT MIN(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS min_delivery_days, MAX(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)) AS max_delivery_days, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_delivery_days FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.8,
+        "EM": 0.0,
+        "CM": 0.7424,
+        "CM_detail": {
+          "SELECT": 0.6667,
+          "FROM": 1.0,
+          "WHERE": 0.875,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.6667,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "avg_delivery_days"
+        ],
+        "generated_columns": [
+          "min_delivery_days",
+          "max_delivery_days"
+        ],
+        "gold_columns": [
+          "min_delivery_days",
+          "max_delivery_days",
+          "avg_delivery_days"
+        ],
+        "value_based_col_mapping": {
+          "min_delivery_days": "min_delivery_days",
+          "max_delivery_days": "max_delivery_days"
+        },
+        "col_score": 0.6667,
+        "row_f1": 1.0,
+        "row_count_generated": 1,
+        "row_count_gold": 1,
+        "rows_matched": 1,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "delivery_003",
+      "question": "Tỷ lệ giao hàng trễ theo từng bang của khách hàng?",
+      "category": "delivery",
+      "difficulty": "hard",
+      "generated_sql": "SELECT c.customer_state,\n  COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_deliveries,\n  COUNT(*) AS total_delivered,\n  ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_percentage\nFROM olist_orders o\nJOIN olist_customers c ON o.customer_id = c.customer_id\nWHERE o.order_status = 'delivered'\n  AND o.order_delivered_customer_date IS NOT NULL\nGROUP BY c.customer_state\nORDER BY late_percentage DESC\nLIMIT 30",
+      "gold_sql": "SELECT c.customer_state, COUNT(*) AS total_delivered, COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_count, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_pct FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY c.customer_state ORDER BY late_pct DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8791,
+        "CM_detail": {
+          "SELECT": 0.7895,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "customer_state",
+          "late_deliveries",
+          "total_delivered",
+          "late_percentage"
+        ],
+        "gold_columns": [
+          "customer_state",
+          "total_delivered",
+          "late_count",
+          "late_pct"
+        ],
+        "value_based_col_mapping": {
+          "customer_state": "customer_state",
+          "total_delivered": "total_delivered",
+          "late_count": "late_deliveries",
+          "late_pct": "late_percentage"
+        }
+      }
+    },
+    {
+      "id": "delivery_004",
+      "question": "Danh sách đơn hàng bị giao trễ nhiều nhất (chênh lệch ngày lớn nhất)?",
+      "category": "delivery",
+      "difficulty": "medium",
+      "generated_sql": "SELECT o.order_id, \n       o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn, \n       o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn, \n       datediff(o.order_delivered_customer_date, o.order_estimated_delivery_date) AS days_late\nFROM olist_orders o\nWHERE o.order_status = 'delivered' \n  AND o.order_delivered_customer_date > o.order_estimated_delivery_date\nORDER BY days_late DESC\nLIMIT 10",
+      "gold_sql": "SELECT o.order_id, o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_mua_vn, o.order_estimated_delivery_date + INTERVAL 7 HOURS AS ngay_du_kien_vn, o.order_delivered_customer_date + INTERVAL 7 HOURS AS ngay_giao_thuc_te_vn, datediff(o.order_delivered_customer_date, o.order_estimated_delivery_date) AS days_late FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date > o.order_estimated_delivery_date ORDER BY days_late DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.88,
+        "EM": 0.0,
+        "CM": 0.8974,
+        "CM_detail": {
+          "SELECT": 0.6667,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.8,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "ngay_du_kien_vn"
+        ],
+        "generated_columns": [
+          "order_id",
+          "thoi_gian_dat_vn",
+          "thoi_gian_giao_vn",
+          "days_late"
+        ],
+        "gold_columns": [
+          "order_id",
+          "thoi_gian_mua_vn",
+          "ngay_du_kien_vn",
+          "ngay_giao_thuc_te_vn",
+          "days_late"
+        ],
+        "value_based_col_mapping": {
+          "order_id": "order_id",
+          "thoi_gian_mua_vn": "thoi_gian_dat_vn",
+          "ngay_giao_thuc_te_vn": "thoi_gian_giao_vn",
+          "days_late": "days_late"
+        },
+        "col_score": 0.8,
+        "row_f1": 1.0,
+        "row_count_generated": 10,
+        "row_count_gold": 10,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "delivery_005",
+      "question": "Số đơn hàng giao trễ theo từng tháng?",
+      "category": "delivery",
+      "difficulty": "medium",
+      "generated_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(o.order_id) AS late_deliveries\nFROM olist_orders o\nWHERE o.order_status = 'delivered'\n  AND o.order_delivered_customer_date > o.order_estimated_delivery_date\nGROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')\nORDER BY month\nLIMIT 100",
+      "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(*) AS late_orders FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date > o.order_estimated_delivery_date GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8625,
+        "CM_detail": {
+          "SELECT": 0.7,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "month",
+          "late_deliveries"
+        ],
+        "gold_columns": [
+          "month",
+          "late_orders"
+        ],
+        "value_based_col_mapping": {
+          "month": "month",
+          "late_orders": "late_deliveries"
+        }
+      }
+    },
+    {
+      "id": "review_001",
+      "question": "Điểm đánh giá trung bình toàn hệ thống là bao nhiêu?",
+      "category": "review",
+      "difficulty": "easy",
+      "generated_sql": "SELECT ROUND(AVG(review_score), 2) AS avg_score\nFROM olist_order_reviews\nLIMIT 1",
+      "gold_sql": "SELECT ROUND(AVG(r.review_score), 2) AS avg_review_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.7,
+        "EM": 0.0,
+        "CM": 0.5714,
+        "CM_detail": {
+          "SELECT": 0.5,
+          "FROM": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.5,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "total_reviews"
+        ],
+        "generated_columns": [
+          "avg_score"
+        ],
+        "gold_columns": [
+          "avg_review_score",
+          "total_reviews"
+        ],
+        "value_based_col_mapping": {
+          "avg_review_score": "avg_score"
+        },
+        "col_score": 0.5,
+        "row_f1": 1.0,
+        "row_count_generated": 1,
+        "row_count_gold": 1,
+        "rows_matched": 1,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "review_002",
+      "question": "Tỷ lệ đánh giá tích cực (4-5 sao) là bao nhiêu?",
+      "category": "review",
+      "difficulty": "medium",
+      "generated_sql": "SELECT \n  ROUND(COUNT(CASE WHEN review_score >= 4 THEN 1 END) * 100.0 / COUNT(*), 2) AS positive_review_percentage\nFROM olist_order_reviews\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) AS positive_reviews, COUNT(*) AS total_reviews, ROUND(COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) * 100.0 / COUNT(*), 2) AS positive_pct FROM olist_order_reviews r LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.6,
+        "EM": 0.0,
+        "CM": 0.7227,
+        "CM_detail": {
+          "SELECT": 0.7647,
+          "FROM": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.3333,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "positive_reviews",
+          "total_reviews"
+        ],
+        "generated_columns": [
+          "positive_review_percentage"
+        ],
+        "gold_columns": [
+          "positive_reviews",
+          "total_reviews",
+          "positive_pct"
+        ],
+        "value_based_col_mapping": {
+          "positive_pct": "positive_review_percentage"
+        },
+        "col_score": 0.3333,
+        "row_f1": 1.0,
+        "row_count_generated": 1,
+        "row_count_gold": 1,
+        "rows_matched": 1,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "review_003",
+      "question": "Danh mục sản phẩm nào có điểm đánh giá trung bình cao nhất?",
+      "category": "review",
+      "difficulty": "hard",
+      "generated_sql": "SELECT p.product_category_name, t.product_category_name_english, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews\nFROM olist_order_reviews r\nJOIN olist_order_items oi ON r.order_id = oi.order_id\nJOIN olist_products p ON oi.product_id = p.product_id\nLEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nGROUP BY p.product_category_name, t.product_category_name_english\nORDER BY avg_score DESC\nLIMIT 10",
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english HAVING COUNT(r.review_id) >= 50 ORDER BY avg_score DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.68,
+        "EM": 0.0,
+        "CM": 0.7083,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "JOIN": 0.75,
+          "GROUP BY": 0.5,
+          "HAVING": 0.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.4667,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "category"
+        ],
+        "extra_columns": [
+          "product_category_name",
+          "product_category_name_english"
+        ],
+        "generated_columns": [
+          "product_category_name",
+          "product_category_name_english",
+          "avg_score",
+          "total_reviews"
+        ],
+        "gold_columns": [
+          "category",
+          "avg_score",
+          "total_reviews"
+        ],
+        "value_based_col_mapping": {
+          "avg_score": "avg_score",
+          "total_reviews": "total_reviews"
+        },
+        "col_score": 0.6667,
+        "row_f1": 0.7,
+        "row_count_generated": 10,
+        "row_count_gold": 10,
+        "rows_matched": 7,
+        "rows_missing_in_gen": 3,
+        "rows_extra_in_gen": 3,
+        "sample_unmatched_gold_rows": [
+          {
+            "avg_score": "4.23",
+            "total_reviews": "261"
+          },
+          {
+            "avg_score": "4.22",
+            "total_reviews": "495"
+          },
+          {
+            "avg_score": "4.21",
+            "total_reviews": "73"
+          }
+        ]
+      }
+    },
+    {
+      "id": "review_004",
+      "question": "Người bán nào có điểm đánh giá trung bình thấp nhất (với ít nhất 10 đơn)?",
+      "category": "review",
+      "difficulty": "hard",
+      "generated_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(DISTINCT oi.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_order_reviews r ON oi.order_id = r.order_id\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nGROUP BY oi.seller_id, s.seller_city, s.seller_state\nHAVING COUNT(DISTINCT oi.order_id) >= 10\nORDER BY avg_score ASC\nLIMIT 10",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(DISTINCT r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT r.review_id) >= 10 ORDER BY avg_score ASC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.7583,
+        "CM_detail": {
+          "SELECT": 0.7333,
+          "FROM": 0.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "HAVING": 0.6,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9926
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "seller_id",
+          "seller_city",
+          "seller_state",
+          "avg_score",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "seller_id",
+          "seller_city",
+          "seller_state",
+          "avg_score",
+          "total_reviews"
+        ],
+        "value_based_col_mapping": {
+          "seller_id": "seller_id",
+          "seller_city": "seller_city",
+          "seller_state": "seller_state",
+          "avg_score": "avg_score",
+          "total_reviews": "total_orders"
+        }
+      }
+    },
+    {
+      "id": "review_005",
+      "question": "Số đơn hàng có đánh giá tiêu cực (1-2 sao) theo từng tháng?",
+      "category": "review",
+      "difficulty": "medium",
+      "generated_sql": "SELECT date_format(r.review_creation_date, 'yyyy-MM') AS month, COUNT(r.order_id) AS total_reviews\nFROM olist_order_reviews r\nWHERE r.review_score <= 2\nGROUP BY date_format(r.review_creation_date, 'yyyy-MM')\nORDER BY month\nLIMIT 100",
+      "gold_sql": "SELECT date_format(r.review_creation_date, 'yyyy-MM') AS month, COUNT(r.review_id) AS negative_reviews FROM olist_order_reviews r WHERE r.review_score <= 2 GROUP BY date_format(r.review_creation_date, 'yyyy-MM') ORDER BY month LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8466,
+        "CM_detail": {
+          "SELECT": 0.6364,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9769
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "month",
+          "total_reviews"
+        ],
+        "gold_columns": [
+          "month",
+          "negative_reviews"
+        ],
+        "value_based_col_mapping": {
+          "month": "month",
+          "negative_reviews": "total_reviews"
+        }
+      }
+    },
+    {
+      "id": "payment_001",
+      "question": "Tỷ lệ khách hàng mua trả góp khi dùng thẻ tín dụng?",
+      "category": "payment",
+      "difficulty": "medium",
+      "generated_sql": "SELECT \n  COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) AS installment_payments, \n  COUNT(*) AS total_payments, \n  ROUND(COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS installment_percentage \nFROM olist_order_payments p \nWHERE p.payment_type = 'credit_card' \nLIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) AS installment_payments, COUNT(*) AS total_payments, ROUND(COUNT(CASE WHEN p.payment_installments > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS installment_percentage FROM olist_order_payments p WHERE p.payment_type = 'credit_card' LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9091,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "payment_002",
+      "question": "Giá trị thanh toán trung bình theo từng phương thức thanh toán?",
+      "category": "payment",
+      "difficulty": "easy",
+      "generated_sql": "SELECT payment_type, ROUND(AVG(payment_value), 2) AS avg_payment, COUNT(*) AS total_transactions, ROUND(SUM(payment_value), 2) AS total_value\nFROM olist_order_payments\nGROUP BY payment_type\nORDER BY total_transactions DESC\nLIMIT 10",
+      "gold_sql": "SELECT p.payment_type, ROUND(AVG(p.payment_value), 2) AS avg_payment, COUNT(*) AS total_transactions FROM olist_order_payments p GROUP BY p.payment_type ORDER BY avg_payment DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8283,
+        "CM_detail": {
+          "SELECT": 0.8182,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 1.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "extra_columns": [
+          "total_value"
+        ],
+        "generated_columns": [
+          "payment_type",
+          "avg_payment",
+          "total_transactions",
+          "total_value"
+        ],
+        "gold_columns": [
+          "payment_type",
+          "avg_payment",
+          "total_transactions"
+        ],
+        "value_based_col_mapping": {
+          "payment_type": "payment_type",
+          "avg_payment": "avg_payment",
+          "total_transactions": "total_transactions"
+        },
+        "col_score": 1.0,
+        "row_f1": 1.0,
+        "row_count_generated": 5,
+        "row_count_gold": 5,
+        "rows_matched": 5,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "payment_003",
+      "question": "Phân bổ số kỳ trả góp của đơn hàng dùng thẻ tín dụng?",
+      "category": "payment",
+      "difficulty": "medium",
+      "generated_sql": "SELECT payment_installments, COUNT(*) AS total_transactions, ROUND(SUM(payment_value), 2) AS total_value\nFROM olist_order_payments\nWHERE payment_type = 'credit_card'\nGROUP BY payment_installments\nORDER BY payment_installments ASC\nLIMIT 20",
+      "gold_sql": "SELECT p.payment_installments, COUNT(*) AS total_orders, ROUND(SUM(p.payment_value), 2) AS total_value FROM olist_order_payments p WHERE p.payment_type = 'credit_card' GROUP BY p.payment_installments ORDER BY p.payment_installments LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.9455,
+        "EM": 0.0,
+        "CM": 0.825,
+        "CM_detail": {
+          "SELECT": 0.8,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.5,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.9091,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "payment_installments",
+          "total_transactions",
+          "total_value"
+        ],
+        "gold_columns": [
+          "payment_installments",
+          "total_orders",
+          "total_value"
+        ],
+        "value_based_col_mapping": {
+          "payment_installments": "payment_installments",
+          "total_orders": "total_transactions",
+          "total_value": "total_value"
+        },
+        "limit_subset_detected": true,
+        "note": "gen (20 rows) là tập con hợp lệ của gold (24 rows) — có thể do AI thêm LIMIT ngầm định. Precision = 1.0.",
+        "col_score": 1.0,
+        "row_f1": 0.9091,
+        "row_count_generated": 20,
+        "row_count_gold": 24,
+        "rows_matched": 20,
+        "rows_missing_in_gen": 4,
+        "rows_extra_in_gen": 0,
+        "sample_unmatched_gold_rows": [
+          {
+            "payment_installments": "21",
+            "total_orders": "3",
+            "total_value": "731.10"
+          },
+          {
+            "payment_installments": "22",
+            "total_orders": "1",
+            "total_value": "228.71"
+          },
+          {
+            "payment_installments": "23",
+            "total_orders": "1",
+            "total_value": "236.48"
+          }
+        ]
+      }
+    },
+    {
+      "id": "payment_004",
+      "question": "Tổng giá trị giao dịch theo phương thức thanh toán theo từng năm?",
+      "category": "payment",
+      "difficulty": "medium",
+      "generated_sql": "SELECT \n  year(o.order_purchase_timestamp) AS yr, \n  p.payment_type, \n  COUNT(p.order_id) AS total_transactions, \n  ROUND(SUM(p.payment_value), 2) AS total_value\nFROM olist_order_payments p\nJOIN olist_orders o ON p.order_id = o.order_id\nGROUP BY year(o.order_purchase_timestamp), p.payment_type\nORDER BY yr DESC, total_value DESC\nLIMIT 50",
+      "gold_sql": "SELECT year(o.order_purchase_timestamp) AS yr, p.payment_type, ROUND(SUM(p.payment_value), 2) AS total_value FROM olist_order_payments p JOIN olist_orders o ON p.order_id = o.order_id GROUP BY year(o.order_purchase_timestamp), p.payment_type ORDER BY yr, total_value DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8626,
+        "CM_detail": {
+          "SELECT": 0.7692,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 1.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "extra_columns": [
+          "total_transactions"
+        ],
+        "generated_columns": [
+          "yr",
+          "payment_type",
+          "total_transactions",
+          "total_value"
+        ],
+        "gold_columns": [
+          "yr",
+          "payment_type",
+          "total_value"
+        ],
+        "value_based_col_mapping": {
+          "yr": "yr",
+          "payment_type": "payment_type",
+          "total_value": "total_value"
+        },
+        "col_score": 1.0,
+        "row_f1": 1.0,
+        "row_count_generated": 13,
+        "row_count_gold": 13,
+        "rows_matched": 13,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "payment_005",
+      "question": "Đơn hàng có giá trị thanh toán cao nhất là bao nhiêu?",
+      "category": "payment",
+      "difficulty": "easy",
+      "generated_sql": "SELECT MAX(payment_value) AS max_payment_value\nFROM olist_order_payments\nLIMIT 1",
+      "gold_sql": "SELECT p.order_id, ROUND(SUM(p.payment_value), 2) AS total_paid FROM olist_order_payments p GROUP BY p.order_id ORDER BY total_paid DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4545,
+        "EM": 0.0,
+        "CM": 0.2407,
+        "CM_detail": {
+          "SELECT": 0.2222,
+          "FROM": 1.0,
+          "GROUP BY": 0.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0909,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "order_id"
+        ],
+        "generated_columns": [
+          "max_payment_value"
+        ],
+        "gold_columns": [
+          "order_id",
+          "total_paid"
+        ],
+        "value_based_col_mapping": {
+          "total_paid": "max_payment_value"
+        },
+        "limit_subset_detected": true,
+        "note": "gen (1 rows) là tập con hợp lệ của gold (10 rows) — có thể do AI thêm LIMIT ngầm định. Precision = 1.0.",
+        "col_score": 0.5,
+        "row_f1": 0.1818,
+        "row_count_generated": 1,
+        "row_count_gold": 10,
+        "rows_matched": 1,
+        "rows_missing_in_gen": 9,
+        "rows_extra_in_gen": 0,
+        "sample_unmatched_gold_rows": [
+          {
+            "total_paid": "7274.88"
+          },
+          {
+            "total_paid": "6929.31"
+          },
+          {
+            "total_paid": "6922.21"
+          }
+        ]
+      }
+    },
+    {
+      "id": "geography_001",
+      "question": "Top 10 thành phố có nhiều khách hàng nhất?",
+      "category": "geography",
+      "difficulty": "easy",
+      "generated_sql": "SELECT c.customer_city, c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS total_customers\nFROM olist_customers c\nGROUP BY c.customer_city, c.customer_state\nORDER BY total_customers DESC\nLIMIT 10",
+      "gold_sql": "SELECT c.customer_city, c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS total_customers FROM olist_customers c GROUP BY c.customer_city, c.customer_state ORDER BY total_customers DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9822
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "geography_002",
+      "question": "Bang nào có nhiều đơn hàng nhất?",
+      "category": "geography",
+      "difficulty": "easy",
+      "generated_sql": "SELECT c.customer_state, COUNT(o.order_id) AS total_orders\nFROM olist_orders o\nJOIN olist_customers c ON o.customer_id = c.customer_id\nGROUP BY c.customer_state\nORDER BY total_orders DESC\nLIMIT 27",
+      "gold_sql": "SELECT c.customer_state, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_orders DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.7243,
+        "EM": 0.0,
+        "CM": 0.881,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.5405,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "col_score": 1.0,
+        "row_f1": 0.5405,
+        "row_count_generated": 27,
+        "row_count_gold": 10,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 17
+      }
+    },
+    {
+      "id": "geography_003",
+      "question": "Doanh thu theo từng bang của khách hàng, chỉ tính đơn đã giao?",
+      "category": "geography",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nJOIN olist_customers c ON o.customer_id = c.customer_id\nWHERE o.order_status = 'delivered'\nGROUP BY c.customer_state\nORDER BY total_revenue DESC\nLIMIT 30",
+      "gold_sql": "SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS total_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_state ORDER BY total_revenue DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9192,
+        "CM_detail": {
+          "SELECT": 0.6364,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 1.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "extra_columns": [
+          "total_orders"
+        ],
+        "generated_columns": [
+          "customer_state",
+          "total_revenue",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "customer_state",
+          "total_revenue"
+        ],
+        "value_based_col_mapping": {
+          "customer_state": "customer_state",
+          "total_revenue": "total_revenue"
+        },
+        "col_score": 1.0,
+        "row_f1": 1.0,
+        "row_count_generated": 27,
+        "row_count_gold": 27,
+        "rows_matched": 27,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "geography_004",
+      "question": "Bang nào có nhiều người bán nhất?",
+      "category": "geography",
+      "difficulty": "easy",
+      "generated_sql": "SELECT seller_state, COUNT(seller_id) AS total_sellers\nFROM olist_sellers\nGROUP BY seller_state\nORDER BY total_sellers DESC\nLIMIT 30",
+      "gold_sql": "SELECT s.seller_state, COUNT(DISTINCT s.seller_id) AS total_sellers FROM olist_sellers s GROUP BY s.seller_state ORDER BY total_sellers DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9444,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9968
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "geography_005",
+      "question": "Khoảng cách mua hàng xuyên bang: số đơn hàng mà khách và người bán ở khác bang?",
+      "category": "geography",
+      "difficulty": "hard",
+      "generated_sql": "SELECT COUNT(o.order_id) AS cross_state_orders\nFROM olist_orders o\nJOIN olist_order_items oi ON o.order_id = oi.order_id\nJOIN olist_customers c ON o.customer_id = c.customer_id\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nWHERE c.customer_state <> s.seller_state\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(DISTINCT o.order_id) AS cross_state_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE c.customer_state <> s.seller_state LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4,
+        "EM": 0.0,
+        "CM": 0.8615,
+        "CM_detail": {
+          "SELECT": 0.8,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "col_score": 1.0,
+        "row_f1": 0.0,
+        "row_count_generated": 1,
+        "row_count_gold": 1,
+        "rows_matched": 0,
+        "rows_missing_in_gen": 1,
+        "rows_extra_in_gen": 1,
+        "sample_unmatched_gold_rows": [
+          {
+            "cross_state_orders": "63313"
+          }
+        ]
+      }
+    },
+    {
+      "id": "realtime_001",
+      "question": "Hôm nay có bao nhiêu đơn hàng mới?",
+      "category": "realtime",
+      "difficulty": "easy",
+      "generated_sql": "SELECT COUNT(order_id) AS total_orders\nFROM bronze_rt_orders_sim\nWHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(order_id) AS total_orders_today FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.7636,
+        "CM_detail": {
+          "SELECT": 0.6,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "total_orders"
+        ],
+        "gold_columns": [
+          "total_orders_today"
+        ],
+        "value_based_col_mapping": {
+          "total_orders_today": "total_orders"
+        }
+      }
+    },
+    {
+      "id": "realtime_002",
+      "question": "Chi tiết 10 đơn hàng mới nhất vừa vào hệ thống?",
+      "category": "realtime",
+      "difficulty": "easy",
+      "generated_sql": "SELECT rt.order_id, rt.customer_id, rt.order_status, rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn\nFROM bronze_rt_orders_sim rt\nORDER BY rt.order_purchase_timestamp DESC\nLIMIT 10",
+      "gold_sql": "SELECT rt.order_id, rt.customer_id, rt.order_status, rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn FROM bronze_rt_orders_sim rt ORDER BY rt.order_purchase_timestamp DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9867
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "realtime_003",
+      "question": "Thống kê số đơn hàng realtime hôm nay theo từng trạng thái?",
+      "category": "realtime",
+      "difficulty": "easy",
+      "generated_sql": "SELECT order_status, COUNT(order_id) AS so_luong_don\nFROM bronze_rt_orders_sim\nWHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)\nGROUP BY order_status\nLIMIT 20",
+      "gold_sql": "SELECT rt.order_status, COUNT(rt.order_id) AS so_luong_don FROM bronze_rt_orders_sim rt WHERE DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) GROUP BY rt.order_status ORDER BY so_luong_don DESC LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.875,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "realtime_004",
+      "question": "Đơn hàng mới hôm nay phân bổ theo từng giờ như thế nào?",
+      "category": "realtime",
+      "difficulty": "medium",
+      "generated_sql": "SELECT HOUR(order_purchase_timestamp + INTERVAL 7 HOURS) AS gio_vn, COUNT(order_id) AS so_don\nFROM bronze_rt_orders_sim\nWHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)\nGROUP BY HOUR(order_purchase_timestamp + INTERVAL 7 HOURS)\nORDER BY gio_vn LIMIT 1000",
+      "gold_sql": "SELECT HOUR(order_purchase_timestamp + INTERVAL 7 HOURS) AS gio_vn, COUNT(order_id) AS so_don FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) GROUP BY HOUR(order_purchase_timestamp + INTERVAL 7 HOURS) ORDER BY gio_vn LIMIT 24",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9375,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9996
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "realtime_005",
+      "question": "So sánh số đơn hàng hôm nay và hôm qua?",
+      "category": "realtime",
+      "difficulty": "medium",
+      "generated_sql": "SELECT\n  CASE\n    WHEN DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)\n      THEN 'Hôm nay'\n    WHEN DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY)\n      THEN 'Hôm qua'\n  END AS ngay,\n  COUNT(order_id) AS tong_don_hang\nFROM bronze_rt_orders_sim\nWHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY)\nGROUP BY ngay\nORDER BY ngay DESC\nLIMIT 2",
+      "gold_sql": "SELECT CASE WHEN DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) THEN 'Hôm nay' WHEN DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY) THEN 'Hôm qua' ELSE 'Khác' END AS ngay, COUNT(order_id) AS tong_don_hang FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY) GROUP BY ngay ORDER BY ngay DESC LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9148,
+        "CM_detail": {
+          "SELECT": 0.9091,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9814
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "realtime_006",
+      "question": "Khách hàng ở bang nào mua nhiều nhất trong dữ liệu realtime?",
+      "category": "realtime",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_state, COUNT(DISTINCT rt.customer_id) AS total_customers\nFROM bronze_rt_orders_sim rt\nJOIN olist_customers c ON rt.customer_id = c.customer_id\nGROUP BY c.customer_state\nORDER BY total_customers DESC\nLIMIT 30",
+      "gold_sql": "SELECT c.customer_state, COUNT(rt.order_id) AS total_rt_orders FROM bronze_rt_orders_sim rt JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_rt_orders DESC LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4937,
+        "EM": 0.0,
+        "CM": 0.5976,
+        "CM_detail": {
+          "SELECT": 0.375,
+          "FROM": 1.0,
+          "JOIN": 0.6,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.1562,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "total_rt_orders"
+        ],
+        "extra_columns": [
+          "total_customers"
+        ],
+        "generated_columns": [
+          "customer_state",
+          "total_customers"
+        ],
+        "gold_columns": [
+          "customer_state",
+          "total_rt_orders"
+        ],
+        "value_based_col_mapping": {
+          "customer_state": "customer_state"
+        },
+        "col_score": 0.5,
+        "row_f1": 0.3125,
+        "row_count_generated": 27,
+        "row_count_gold": 5,
+        "rows_matched": 5,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 22
+      }
+    },
+    {
+      "id": "realtime_007",
+      "question": "So sánh tổng số đơn hàng lịch sử và đơn hàng realtime?",
+      "category": "realtime",
+      "difficulty": "medium",
+      "generated_sql": "SELECT 'Lịch sử (2016-2018)' AS nguon_du_lieu, COUNT(order_id) AS so_luong_don FROM ai_analyst.ecommerce.olist_orders\nUNION ALL\nSELECT 'Realtime (2026)' AS nguon_du_lieu, COUNT(order_id) AS so_luong_don FROM bronze_rt_orders_sim LIMIT 1000",
+      "gold_sql": "SELECT 'Lịch sử (2016-2018)' AS nguon_du_lieu, COUNT(order_id) AS so_luong_don FROM ai_analyst.ecommerce.olist_orders UNION ALL SELECT 'Realtime (2026)' AS nguon_du_lieu, COUNT(order_id) AS so_luong_don FROM bronze_rt_orders_sim LIMIT 2",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8571,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9724
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "realtime_008",
+      "question": "Thành phố nào có nhiều đơn hàng realtime nhất?",
+      "category": "realtime",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_city, c.customer_state, COUNT(rt.order_id) AS so_don_moi\nFROM bronze_rt_orders_sim rt\nJOIN olist_customers c ON rt.customer_id = c.customer_id\nGROUP BY c.customer_city, c.customer_state\nORDER BY so_don_moi DESC\nLIMIT 10",
+      "gold_sql": "SELECT c.customer_city, c.customer_state, COUNT(rt.order_id) AS so_don_moi FROM bronze_rt_orders_sim rt JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id GROUP BY c.customer_city, c.customer_state ORDER BY so_don_moi DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9429,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 0.6,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "realtime_009",
+      "question": "Thời điểm đơn hàng mới nhất trong hệ thống realtime là khi nào?",
+      "category": "realtime",
+      "difficulty": "easy",
+      "generated_sql": "SELECT MAX(order_purchase_timestamp + INTERVAL 7 HOURS) AS latest_order_date_vn\nFROM bronze_rt_orders_sim\nLIMIT 1",
+      "gold_sql": "SELECT MAX(order_purchase_timestamp + INTERVAL 7 HOURS) AS latest_order_date_vn, COUNT(order_id) AS tong_don_hom_nay FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4,
+        "EM": 0.0,
+        "CM": 0.4364,
+        "CM_detail": {
+          "SELECT": 0.7,
+          "FROM": 1.0,
+          "WHERE": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "tong_don_hom_nay"
+        ],
+        "generated_columns": [
+          "latest_order_date_vn"
+        ],
+        "gold_columns": [
+          "latest_order_date_vn",
+          "tong_don_hom_nay"
+        ],
+        "value_based_col_mapping": {
+          "latest_order_date_vn": "latest_order_date_vn"
+        },
+        "col_score": 0.5,
+        "row_f1": 0.0,
+        "row_count_generated": 1,
+        "row_count_gold": 1,
+        "rows_matched": 0,
+        "rows_missing_in_gen": 1,
+        "rows_extra_in_gen": 1,
+        "sample_unmatched_gold_rows": [
+          {
+            "latest_order_date_vn": "None"
+          }
+        ]
+      }
+    },
+    {
+      "id": "realtime_010",
+      "question": "Liệt kê toàn bộ đơn hàng hôm nay với thời gian theo giờ Việt Nam?",
+      "category": "realtime",
+      "difficulty": "medium",
+      "generated_sql": "SELECT rt.order_id, rt.customer_id, rt.order_status, \n  DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) AS ngay_vn, \n  HOUR(rt.order_purchase_timestamp + INTERVAL 7 HOURS) AS gio_vn, \n  rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn\nFROM bronze_rt_orders_sim rt\nWHERE DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)\nORDER BY rt.order_purchase_timestamp DESC\nLIMIT 100",
+      "gold_sql": "SELECT rt.order_id, rt.customer_id, rt.order_status, DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) AS ngay_vn, HOUR(rt.order_purchase_timestamp + INTERVAL 7 HOURS) AS gio_vn, rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn FROM bronze_rt_orders_sim rt WHERE DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) ORDER BY rt.order_purchase_timestamp DESC LIMIT 200",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4,
+        "EM": 0.0,
+        "CM": 0.8791,
+        "CM_detail": {
+          "SELECT": 0.8571,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "thoi_gian_vn"
+        ],
+        "extra_columns": [
+          "thoi_gian_dat_vn"
+        ],
+        "generated_columns": [
+          "order_id",
+          "customer_id",
+          "order_status",
+          "ngay_vn",
+          "gio_vn",
+          "thoi_gian_dat_vn"
+        ],
+        "gold_columns": [
+          "order_id",
+          "customer_id",
+          "order_status",
+          "ngay_vn",
+          "gio_vn",
+          "thoi_gian_vn"
+        ],
+        "value_based_col_mapping": {
+          "order_id": "order_id",
+          "customer_id": "customer_id",
+          "order_status": "order_status",
+          "ngay_vn": "ngay_vn",
+          "gio_vn": "gio_vn"
+        },
+        "col_score": 0.8333,
+        "row_f1": 0.0,
+        "row_count_generated": 0,
+        "row_count_gold": 0,
+        "rows_matched": 0,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "subquery_001",
+      "question": "Khách hàng nào đã đặt hơn 3 đơn hàng?",
+      "category": "subquery",
+      "difficulty": "hard",
+      "generated_sql": "SELECT c.customer_unique_id, COUNT(o.order_id) AS total_orders\nFROM olist_customers c\nJOIN olist_orders o ON c.customer_id = o.customer_id\nGROUP BY c.customer_unique_id\nHAVING COUNT(o.order_id) > 3\nORDER BY total_orders DESC\nLIMIT 3",
+      "gold_sql": "SELECT c.customer_unique_id, c.customer_city, c.customer_state, t.order_count FROM (SELECT o.customer_id, COUNT(DISTINCT o.order_id) AS order_count FROM olist_orders o GROUP BY o.customer_id HAVING COUNT(DISTINCT o.order_id) > 3) t JOIN olist_customers c ON t.customer_id = c.customer_id ORDER BY t.order_count DESC LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4,
+        "EM": 0.0,
+        "CM": 0.25,
+        "CM_detail": {
+          "SELECT": 0.375,
+          "FROM": 0.0,
+          "JOIN": 0.4,
+          "GROUP BY": 0.0,
+          "HAVING": 0.6,
+          "ORDER BY": 0.25,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "customer_city",
+          "customer_state",
+          "order_count"
+        ],
+        "extra_columns": [
+          "total_orders"
+        ],
+        "generated_columns": [
+          "customer_unique_id",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "customer_unique_id",
+          "customer_city",
+          "customer_state",
+          "order_count"
+        ],
+        "value_based_col_mapping": {
+          "customer_unique_id": "customer_unique_id"
+        },
+        "col_score": 0.25,
+        "row_f1": 0.0,
+        "row_count_generated": 3,
+        "row_count_gold": 0,
+        "rows_matched": 0,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 3
+      }
+    },
+    {
+      "id": "subquery_002",
+      "question": "Danh mục sản phẩm nào có số lượng sản phẩm nhiều nhất?",
+      "category": "subquery",
+      "difficulty": "medium",
+      "generated_sql": "SELECT product_category_name, COUNT(product_id) AS product_count\nFROM olist_products\nGROUP BY product_category_name\nORDER BY product_count DESC\nLIMIT 10",
+      "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(p.product_id) AS product_count FROM olist_products p LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY product_count DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.7,
+        "EM": 0.0,
+        "CM": 0.5204,
+        "CM_detail": {
+          "SELECT": 0.5714,
+          "FROM": 1.0,
+          "JOIN": 0.0,
+          "GROUP BY": 0.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.5,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "category"
+        ],
+        "extra_columns": [
+          "product_category_name"
+        ],
+        "generated_columns": [
+          "product_category_name",
+          "product_count"
+        ],
+        "gold_columns": [
+          "category",
+          "product_count"
+        ],
+        "value_based_col_mapping": {
+          "product_count": "product_count"
+        },
+        "col_score": 0.5,
+        "row_f1": 1.0,
+        "row_count_generated": 10,
+        "row_count_gold": 10,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "subquery_003",
+      "question": "Đơn hàng nào có nhiều sản phẩm nhất (top 5)?",
+      "category": "subquery",
+      "difficulty": "medium",
+      "generated_sql": "SELECT order_id, COUNT(order_item_id) AS product_count\nFROM olist_order_items\nGROUP BY order_id\nORDER BY product_count DESC\nLIMIT 5",
+      "gold_sql": "SELECT oi.order_id, COUNT(oi.order_item_id) AS item_count, ROUND(SUM(oi.price), 2) AS total_value FROM olist_order_items oi GROUP BY oi.order_id ORDER BY item_count DESC LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.8,
+        "EM": 0.0,
+        "CM": 0.6768,
+        "CM_detail": {
+          "SELECT": 0.3636,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.6667,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "total_value"
+        ],
+        "generated_columns": [
+          "order_id",
+          "product_count"
+        ],
+        "gold_columns": [
+          "order_id",
+          "item_count",
+          "total_value"
+        ],
+        "value_based_col_mapping": {
+          "order_id": "order_id",
+          "item_count": "product_count"
+        },
+        "col_score": 0.6667,
+        "row_f1": 1.0,
+        "row_count_generated": 5,
+        "row_count_gold": 5,
+        "rows_matched": 5,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "subquery_004",
+      "question": "Người bán nào chưa từng bị đánh giá dưới 3 sao?",
+      "category": "subquery",
+      "difficulty": "hard",
+      "generated_sql": "SELECT DISTINCT oi.seller_id\nFROM olist_order_items oi\nJOIN olist_order_reviews r ON oi.order_id = r.order_id\nWHERE oi.seller_id NOT IN (\n    SELECT DISTINCT oi2.seller_id\n    FROM olist_order_items oi2\n    JOIN olist_order_reviews r2 ON oi2.order_id = r2.order_id\n    WHERE r2.review_score < 3\n)\nLIMIT 20",
+      "gold_sql": "SELECT DISTINCT oi.seller_id, s.seller_city, s.seller_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE oi.seller_id NOT IN (SELECT DISTINCT oi2.seller_id FROM olist_order_items oi2 JOIN olist_orders o ON oi2.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE r.review_score < 3) LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.45,
+        "EM": 0.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0833,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "seller_city",
+          "seller_state"
+        ],
+        "generated_columns": [
+          "seller_id"
+        ],
+        "gold_columns": [
+          "seller_id",
+          "seller_city",
+          "seller_state"
+        ],
+        "value_based_col_mapping": {
+          "seller_id": "seller_id"
+        },
+        "col_score": 0.3333,
+        "row_f1": 0.25,
+        "row_count_generated": 20,
+        "row_count_gold": 20,
+        "rows_matched": 5,
+        "rows_missing_in_gen": 15,
+        "rows_extra_in_gen": 15,
+        "sample_unmatched_gold_rows": [
+          {
+            "seller_id": "392353362d22cc2c236e1ee81ff19890"
+          },
+          {
+            "seller_id": "a3b0df0065e264a91b7bbf5f844af5cd"
+          },
+          {
+            "seller_id": "c157bdeedcbc9a8e3c8bf0d87ff24428"
+          }
+        ]
+      }
+    },
+    {
+      "id": "subquery_005",
+      "question": "Tổng số đơn hàng toàn hệ thống (cả lịch sử lẫn realtime)?",
+      "category": "subquery",
+      "difficulty": "medium",
+      "generated_sql": "SELECT (SELECT COUNT(order_id) FROM ai_analyst.ecommerce.olist_orders) + (SELECT COUNT(order_id) FROM ai_analyst.ecommerce.bronze_rt_orders_sim) AS tong_don_toan_he_thong\nLIMIT 1",
+      "gold_sql": "SELECT s.tong_don_toan_he_thong FROM (SELECT (SELECT COUNT(o.order_id) FROM ai_analyst.ecommerce.olist_orders o) + (SELECT COUNT(rt.order_id) FROM bronze_rt_orders_sim rt) AS tong_don_toan_he_thong) s LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.7143,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 0.5,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "window_001",
+      "question": "Xếp hạng doanh thu theo bang của khách hàng?",
+      "category": "window_function",
+      "difficulty": "hard",
+      "generated_sql": "SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nJOIN olist_customers c ON o.customer_id = c.customer_id\nWHERE o.order_status = 'delivered'\nGROUP BY c.customer_state\nORDER BY total_revenue DESC\nLIMIT 30",
+      "gold_sql": "SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS total_revenue, RANK() OVER (ORDER BY SUM(oi.price) DESC) AS revenue_rank FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_state ORDER BY revenue_rank LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.8,
+        "EM": 0.0,
+        "CM": 0.7863,
+        "CM_detail": {
+          "SELECT": 0.5385,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.6667,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "revenue_rank"
+        ],
+        "extra_columns": [
+          "total_orders"
+        ],
+        "generated_columns": [
+          "customer_state",
+          "total_revenue",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "customer_state",
+          "total_revenue",
+          "revenue_rank"
+        ],
+        "value_based_col_mapping": {
+          "customer_state": "customer_state",
+          "total_revenue": "total_revenue"
+        },
+        "col_score": 0.6667,
+        "row_f1": 1.0,
+        "row_count_generated": 27,
+        "row_count_gold": 27,
+        "rows_matched": 27,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "window_002",
+      "question": "Doanh thu tích lũy theo tháng trong năm 2017?",
+      "category": "window_function",
+      "difficulty": "hard",
+      "generated_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, ROUND(SUM(oi.price), 2) AS monthly_revenue, COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered' AND year(o.order_purchase_timestamp) = 2017\nGROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')\nORDER BY month\nLIMIT 12",
+      "gold_sql": "SELECT subq.month, subq.monthly_revenue, SUM(subq.monthly_revenue) OVER (ORDER BY subq.month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_revenue FROM (SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, ROUND(SUM(oi.price), 2) AS monthly_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' AND year(o.order_purchase_timestamp) = 2017 GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')) subq ORDER BY subq.month LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.8,
+        "EM": 0.0,
+        "CM": 0.7963,
+        "CM_detail": {
+          "SELECT": 0.7333,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 0.8,
+          "ORDER BY": 0.5,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.6667,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "cumulative_revenue"
+        ],
+        "extra_columns": [
+          "total_orders"
+        ],
+        "generated_columns": [
+          "month",
+          "monthly_revenue",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "month",
+          "monthly_revenue",
+          "cumulative_revenue"
+        ],
+        "value_based_col_mapping": {
+          "month": "month",
+          "monthly_revenue": "monthly_revenue"
+        },
+        "col_score": 0.6667,
+        "row_f1": 1.0,
+        "row_count_generated": 12,
+        "row_count_gold": 12,
+        "rows_matched": 12,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "window_003",
+      "question": "Xếp hạng người bán theo doanh thu trong từng bang?",
+      "category": "window_function",
+      "difficulty": "hard",
+      "generated_sql": "SELECT s.seller_state, s.seller_id, ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT oi.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY s.seller_state, s.seller_id\nORDER BY s.seller_state, total_revenue DESC\nLIMIT 50",
+      "gold_sql": "SELECT s.seller_state, oi.seller_id, ROUND(SUM(oi.price), 2) AS revenue, RANK() OVER (PARTITION BY s.seller_state ORDER BY SUM(oi.price) DESC) AS rank_in_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY s.seller_state, oi.seller_id ORDER BY s.seller_state, rank_in_state LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.7375,
+        "EM": 0.0,
+        "CM": 0.7304,
+        "CM_detail": {
+          "SELECT": 0.4118,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.25,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.5625,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "rank_in_state"
+        ],
+        "extra_columns": [
+          "total_orders"
+        ],
+        "generated_columns": [
+          "seller_state",
+          "seller_id",
+          "total_revenue",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "seller_state",
+          "seller_id",
+          "revenue",
+          "rank_in_state"
+        ],
+        "value_based_col_mapping": {
+          "seller_state": "seller_state",
+          "seller_id": "seller_id",
+          "revenue": "total_revenue"
+        },
+        "col_score": 0.75,
+        "row_f1": 0.75,
+        "row_count_generated": 50,
+        "row_count_gold": 30,
+        "rows_matched": 30,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 20
+      }
+    },
+    {
+      "id": "complex_001",
+      "question": "Phân tích RFM: khách hàng mua lần cuối khi nào, mua bao nhiêu lần, chi tiêu tổng bao nhiêu?",
+      "category": "complex",
+      "difficulty": "hard",
+      "generated_sql": "SELECT \n  c.customer_unique_id, \n  MAX(o.order_purchase_timestamp) AS last_purchase_date, \n  COUNT(DISTINCT o.order_id) AS frequency, \n  SUM(oi.price) AS monetary_value\nFROM ai_analyst.ecommerce.olist_customers c\nJOIN ai_analyst.ecommerce.olist_orders o ON c.customer_id = o.customer_id\nJOIN ai_analyst.ecommerce.olist_order_items oi ON o.order_id = oi.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY c.customer_unique_id\nORDER BY last_purchase_date DESC\nLIMIT 100",
+      "gold_sql": "SELECT c.customer_unique_id, MAX(o.order_purchase_timestamp + INTERVAL 7 HOURS) AS last_purchase_date_vn, COUNT(DISTINCT o.order_id) AS frequency, ROUND(SUM(oi.price), 2) AS monetary FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id JOIN olist_order_items oi ON o.order_id = oi.order_id WHERE o.order_status = 'delivered' GROUP BY c.customer_unique_id ORDER BY monetary DESC LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4,
+        "EM": 0.0,
+        "CM": 0.6096,
+        "CM_detail": {
+          "SELECT": 0.5263,
+          "FROM": 0.0,
+          "JOIN": 0.6,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "last_purchase_date_vn",
+          "monetary"
+        ],
+        "extra_columns": [
+          "last_purchase_date",
+          "monetary_value"
+        ],
+        "generated_columns": [
+          "customer_unique_id",
+          "last_purchase_date",
+          "frequency",
+          "monetary_value"
+        ],
+        "gold_columns": [
+          "customer_unique_id",
+          "last_purchase_date_vn",
+          "frequency",
+          "monetary"
+        ],
+        "value_based_col_mapping": {
+          "frequency": "frequency",
+          "customer_unique_id": "customer_unique_id"
+        },
+        "col_score": 0.5,
+        "row_f1": 0.0,
+        "row_count_generated": 100,
+        "row_count_gold": 20,
+        "rows_matched": 0,
+        "rows_missing_in_gen": 20,
+        "rows_extra_in_gen": 100,
+        "sample_unmatched_gold_rows": [
+          {
+            "frequency": "1",
+            "customer_unique_id": "0a0a92112bd4c708ca5fde585afaa872"
+          },
+          {
+            "frequency": "2",
+            "customer_unique_id": "da122df9eeddfedc1dc1f5349a1a690c"
+          },
+          {
+            "frequency": "1",
+            "customer_unique_id": "763c8b1c9c68a0229c42c9fc6f662b93"
+          }
+        ]
+      }
+    },
+    {
+      "id": "complex_002",
+      "question": "Phân tích tương quan giữa số kỳ trả góp và điểm đánh giá trung bình?",
+      "category": "complex",
+      "difficulty": "hard",
+      "generated_sql": "SELECT p.payment_installments, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews\nFROM olist_order_payments p\nJOIN olist_order_reviews r ON p.order_id = r.order_id\nGROUP BY p.payment_installments\nORDER BY p.payment_installments ASC\nLIMIT 20",
+      "gold_sql": "SELECT p.payment_installments, ROUND(AVG(r.review_score), 2) AS avg_review_score, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_order_payments p JOIN olist_orders o ON p.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE p.payment_type = 'credit_card' GROUP BY p.payment_installments ORDER BY p.payment_installments LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.7454,
+        "EM": 0.0,
+        "CM": 0.5556,
+        "CM_detail": {
+          "SELECT": 0.5,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 0.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.5,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.5757,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "total_orders"
+        ],
+        "extra_columns": [
+          "total_reviews"
+        ],
+        "generated_columns": [
+          "payment_installments",
+          "avg_score",
+          "total_reviews"
+        ],
+        "gold_columns": [
+          "payment_installments",
+          "avg_review_score",
+          "total_orders"
+        ],
+        "value_based_col_mapping": {
+          "payment_installments": "payment_installments",
+          "avg_review_score": "avg_score"
+        },
+        "col_score": 0.6667,
+        "row_f1": 0.8636,
+        "row_count_generated": 20,
+        "row_count_gold": 24,
+        "rows_matched": 19,
+        "rows_missing_in_gen": 5,
+        "rows_extra_in_gen": 1,
+        "sample_unmatched_gold_rows": [
+          {
+            "payment_installments": "1",
+            "avg_review_score": "4.15"
+          },
+          {
+            "payment_installments": "21",
+            "avg_review_score": "4.5"
+          },
+          {
+            "payment_installments": "22",
+            "avg_review_score": "1.0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "complex_003",
+      "question": "Top 5 danh mục sản phẩm có tỷ lệ giao trễ cao nhất?",
+      "category": "complex",
+      "difficulty": "hard",
+      "generated_sql": "SELECT \n  t.product_category_name_english AS category_english,\n  ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_percentage\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nJOIN olist_products p ON oi.product_id = p.product_id\nJOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nWHERE o.order_status = 'delivered' \n  AND o.order_delivered_customer_date IS NOT NULL\nGROUP BY t.product_category_name_english\nORDER BY late_percentage DESC\nLIMIT 5",
+      "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(*) AS total_delivered, COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_count, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_pct FROM olist_orders o JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY t.product_category_name_english HAVING COUNT(*) >= 50 ORDER BY late_pct DESC LIMIT 5",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4,
+        "EM": 0.0,
+        "CM": 0.6733,
+        "CM_detail": {
+          "SELECT": 0.7,
+          "FROM": 0.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "HAVING": 0.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "category",
+          "total_delivered",
+          "late_count",
+          "late_pct"
+        ],
+        "extra_columns": [
+          "category_english",
+          "late_percentage"
+        ],
+        "generated_columns": [
+          "category_english",
+          "late_percentage"
+        ],
+        "gold_columns": [
+          "category",
+          "total_delivered",
+          "late_count",
+          "late_pct"
+        ],
+        "value_based_col_mapping": {},
+        "column_mismatch": true
+      }
+    },
+    {
+      "id": "complex_004",
+      "question": "Danh mục sản phẩm nào có cả doanh thu cao lẫn điểm đánh giá tốt (>= 4)?",
+      "category": "complex",
+      "difficulty": "hard",
+      "generated_sql": "SELECT \n    t.product_category_name_english AS category_english, \n    ROUND(SUM(oi.price), 2) AS revenue, \n    ROUND(AVG(r.review_score), 2) AS avg_score,\n    COUNT(r.review_id) AS total_reviews\nFROM olist_order_items oi\nJOIN olist_products p ON oi.product_id = p.product_id\nJOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nJOIN olist_orders o ON oi.order_id = o.order_id\nJOIN olist_order_reviews r ON o.order_id = r.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY t.product_category_name_english\nHAVING AVG(r.review_score) >= 4\nORDER BY revenue DESC\nLIMIT 20",
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(SUM(oi.price), 2) AS revenue, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE o.order_status = 'delivered' GROUP BY t.product_category_name_english HAVING AVG(r.review_score) >= 4 ORDER BY revenue DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.7,
+        "EM": 0.0,
+        "CM": 0.8722,
+        "CM_detail": {
+          "SELECT": 0.6111,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "HAVING": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.5,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "total_orders"
+        ],
+        "extra_columns": [
+          "total_reviews"
+        ],
+        "generated_columns": [
+          "category_english",
+          "revenue",
+          "avg_score",
+          "total_reviews"
+        ],
+        "gold_columns": [
+          "category",
+          "revenue",
+          "avg_score",
+          "total_orders"
+        ],
+        "value_based_col_mapping": {
+          "category": "category_english",
+          "revenue": "revenue",
+          "avg_score": "avg_score"
+        },
+        "col_score": 0.75,
+        "row_f1": 0.6667,
+        "row_count_generated": 20,
+        "row_count_gold": 10,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 10
+      }
+    },
+    {
+      "id": "complex_005",
+      "question": "Seller có tỉ lệ đơn hàng bị hủy cao nhất (ít nhất 20 đơn)?",
+      "category": "complex",
+      "difficulty": "hard",
+      "generated_sql": "SELECT oi.seller_id, \n       s.seller_city, \n       s.seller_state, \n       COUNT(o.order_id) AS total_orders, \n       COUNT(CASE WHEN o.order_status = 'canceled' THEN 1 END) AS canceled_orders,\n       ROUND(COUNT(CASE WHEN o.order_status = 'canceled' THEN 1 END) * 100.0 / COUNT(o.order_id), 2) AS cancel_rate\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nGROUP BY oi.seller_id, s.seller_city, s.seller_state\nHAVING COUNT(o.order_id) >= 20\nORDER BY cancel_rate DESC\nLIMIT 10",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT o.order_id) AS total_orders, COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) AS canceled_orders, ROUND(COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) * 100.0 / COUNT(DISTINCT o.order_id), 2) AS cancel_rate FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT o.order_id) >= 20 ORDER BY cancel_rate DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.58,
+        "EM": 0.0,
+        "CM": 0.9449,
+        "CM_detail": {
+          "SELECT": 0.9048,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "HAVING": 0.75,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.3,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "col_score": 1.0,
+        "row_f1": 0.3,
+        "row_count_generated": 10,
+        "row_count_gold": 10,
+        "rows_matched": 3,
+        "rows_missing_in_gen": 7,
+        "rows_extra_in_gen": 7,
+        "sample_unmatched_gold_rows": [
+          {
+            "seller_id": "4c8b8048e33af2bf94f2eb547746a916",
+            "seller_city": "ibitinga",
+            "seller_state": "SP",
+            "total_orders": "23",
+            "canceled_orders": "4",
+            "cancel_rate": "17.39"
+          },
+          {
+            "seller_id": "bc47d5d1490df2b36add65d733eafaba",
+            "seller_city": "santo andre",
+            "seller_state": "SP",
+            "total_orders": "24",
+            "canceled_orders": "2",
+            "cancel_rate": "8.33"
+          },
+          {
+            "seller_id": "23d7c96d4a1160db1c726b248601b25a",
+            "seller_city": "capivari",
+            "seller_state": "SP",
+            "total_orders": "53",
+            "canceled_orders": "3",
+            "cancel_rate": "5.66"
+          }
+        ]
+      }
+    },
+    {
+      "id": "product_001",
+      "question": "Top 10 sản phẩm bán chạy nhất theo số lượng đơn hàng?",
+      "category": "product",
+      "difficulty": "medium",
+      "generated_sql": "SELECT oi.product_id, p.product_category_name, t.product_category_name_english AS category_english, COUNT(oi.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_products p ON oi.product_id = p.product_id\nLEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY oi.product_id, p.product_category_name, t.product_category_name_english\nORDER BY total_orders DESC\nLIMIT 10",
+      "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english, COUNT(oi.order_item_id) AS total_sold FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY total_sold DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.837,
+        "CM_detail": {
+          "SELECT": 0.6,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "product_id",
+          "product_category_name",
+          "category_english",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "product_id",
+          "product_category_name",
+          "category_english",
+          "total_sold"
+        ],
+        "value_based_col_mapping": {
+          "product_id": "product_id",
+          "product_category_name": "product_category_name",
+          "category_english": "category_english",
+          "total_sold": "total_orders"
+        }
+      }
+    },
+    {
+      "id": "product_002",
+      "question": "Danh mục sản phẩm nào có trọng lượng trung bình cao nhất?",
+      "category": "product",
+      "difficulty": "medium",
+      "generated_sql": "SELECT p.product_category_name, t.product_category_name_english, ROUND(AVG(p.product_weight_g), 2) AS avg_weight\nFROM olist_products p\nLEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nGROUP BY p.product_category_name, t.product_category_name_english\nORDER BY avg_weight DESC\nLIMIT 10",
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(p.product_weight_g), 1) AS avg_weight_g, COUNT(p.product_id) AS product_count FROM olist_products p JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name WHERE p.product_weight_g IS NOT NULL GROUP BY t.product_category_name_english ORDER BY avg_weight_g DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.6,
+        "EM": 0.0,
+        "CM": 0.4497,
+        "CM_detail": {
+          "SELECT": 0.3571,
+          "FROM": 1.0,
+          "JOIN": 0.75,
+          "WHERE": 0.0,
+          "GROUP BY": 0.5,
+          "ORDER BY": 0.3333,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.3333,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "avg_weight_g",
+          "product_count"
+        ],
+        "extra_columns": [
+          "product_category_name",
+          "avg_weight"
+        ],
+        "generated_columns": [
+          "product_category_name",
+          "product_category_name_english",
+          "avg_weight"
+        ],
+        "gold_columns": [
+          "category",
+          "avg_weight_g",
+          "product_count"
+        ],
+        "value_based_col_mapping": {
+          "category": "product_category_name_english"
+        },
+        "col_score": 0.3333,
+        "row_f1": 1.0,
+        "row_count_generated": 10,
+        "row_count_gold": 10,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "product_003",
+      "question": "Danh mục có số lượng sản phẩm dưới 10 là những danh mục nào?",
+      "category": "product",
+      "difficulty": "medium",
+      "generated_sql": "SELECT p.product_category_name, t.product_category_name_english, COUNT(p.product_id) AS product_count\nFROM olist_products p\nLEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nGROUP BY p.product_category_name, t.product_category_name_english\nHAVING product_count < 10\nORDER BY product_count ASC\nLIMIT 100",
+      "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(p.product_id) AS product_count FROM olist_products p JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english HAVING COUNT(p.product_id) < 10 ORDER BY product_count ASC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.6728,
+        "EM": 0.0,
+        "CM": 0.6473,
+        "CM_detail": {
+          "SELECT": 0.7143,
+          "FROM": 1.0,
+          "JOIN": 0.75,
+          "GROUP BY": 0.5,
+          "HAVING": 0.25,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.4546,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "category"
+        ],
+        "extra_columns": [
+          "product_category_name",
+          "product_category_name_english"
+        ],
+        "generated_columns": [
+          "product_category_name",
+          "product_category_name_english",
+          "product_count"
+        ],
+        "gold_columns": [
+          "category",
+          "product_count"
+        ],
+        "value_based_col_mapping": {
+          "product_count": "product_count"
+        },
+        "col_score": 0.5,
+        "row_f1": 0.9091,
+        "row_count_generated": 6,
+        "row_count_gold": 5,
+        "rows_matched": 5,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 1
+      }
+    },
+    {
+      "id": "product_004",
+      "question": "Tương quan giữa số ảnh sản phẩm và giá bán trung bình?",
+      "category": "product",
+      "difficulty": "medium",
+      "generated_sql": "SELECT p.product_photos_qty, ROUND(AVG(oi.price), 2) AS avg_price\nFROM olist_products p\nJOIN olist_order_items oi ON p.product_id = oi.product_id\nGROUP BY p.product_photos_qty\nORDER BY p.product_photos_qty ASC\nLIMIT 20",
+      "gold_sql": "SELECT p.product_photos_qty, ROUND(AVG(oi.price), 2) AS avg_price, COUNT(DISTINCT p.product_id) AS product_count FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id WHERE p.product_photos_qty IS NOT NULL GROUP BY p.product_photos_qty ORDER BY p.product_photos_qty LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.7898,
+        "EM": 0.0,
+        "CM": 0.4192,
+        "CM_detail": {
+          "SELECT": 0.6364,
+          "FROM": 0.0,
+          "JOIN": 0.5,
+          "WHERE": 0.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.5,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.6496,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "product_count"
+        ],
+        "generated_columns": [
+          "product_photos_qty",
+          "avg_price"
+        ],
+        "gold_columns": [
+          "product_photos_qty",
+          "avg_price",
+          "product_count"
+        ],
+        "value_based_col_mapping": {
+          "product_photos_qty": "product_photos_qty",
+          "avg_price": "avg_price"
+        },
+        "col_score": 0.6667,
+        "row_f1": 0.9744,
+        "row_count_generated": 20,
+        "row_count_gold": 19,
+        "rows_matched": 19,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 1
+      }
+    },
+    {
+      "id": "product_005",
+      "question": "Danh mục sản phẩm nào có phí vận chuyển trung bình cao nhất?",
+      "category": "product",
+      "difficulty": "medium",
+      "generated_sql": "SELECT t.product_category_name_english AS category_english, ROUND(AVG(oi.freight_value), 2) AS avg_freight\nFROM olist_order_items oi\nJOIN olist_products p ON oi.product_id = p.product_id\nJOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nGROUP BY t.product_category_name_english\nORDER BY avg_freight DESC\nLIMIT 10",
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(oi.freight_value), 2) AS avg_freight FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY avg_freight DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9365,
+        "CM_detail": {
+          "SELECT": 0.7778,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "category_english",
+          "avg_freight"
+        ],
+        "gold_columns": [
+          "category",
+          "avg_freight"
+        ],
+        "value_based_col_mapping": {
+          "category": "category_english",
+          "avg_freight": "avg_freight"
+        }
+      }
+    },
+    {
+      "id": "seller_001",
+      "question": "Người bán nào có số lượng đơn hàng nhiều nhất?",
+      "category": "seller",
+      "difficulty": "medium",
+      "generated_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT oi.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nGROUP BY oi.seller_id, s.seller_city, s.seller_state\nORDER BY total_orders DESC\nLIMIT 10",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY total_orders DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.4,
+        "EM": 0.0,
+        "CM": 0.6889,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 0.2,
+          "WHERE": 0.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "col_score": 1.0,
+        "row_f1": 0.0,
+        "row_count_generated": 10,
+        "row_count_gold": 10,
+        "rows_matched": 0,
+        "rows_missing_in_gen": 10,
+        "rows_extra_in_gen": 10,
+        "sample_unmatched_gold_rows": [
+          {
+            "seller_id": "6560211a19b47992c3666cc44a7e94c0",
+            "seller_city": "sao paulo",
+            "seller_state": "SP",
+            "total_orders": "1819"
+          },
+          {
+            "seller_id": "4a3ca9315b744ce9f8e9374361493884",
+            "seller_city": "ibitinga",
+            "seller_state": "SP",
+            "total_orders": "1772"
+          },
+          {
+            "seller_id": "cc419e0650a3c5ba77189a1882b7556a",
+            "seller_city": "santo andre",
+            "seller_state": "SP",
+            "total_orders": "1651"
+          }
+        ]
+      }
+    },
+    {
+      "id": "seller_002",
+      "question": "Người bán nào bán nhiều danh mục sản phẩm nhất?",
+      "category": "seller",
+      "difficulty": "medium",
+      "generated_sql": "SELECT oi.seller_id, s.seller_city, COUNT(DISTINCT p.product_category_name) AS category_count\nFROM olist_order_items oi\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nJOIN olist_products p ON oi.product_id = p.product_id\nGROUP BY oi.seller_id, s.seller_city\nORDER BY category_count DESC\nLIMIT 10",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, COUNT(DISTINCT p.product_category_name) AS category_count FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_products p ON oi.product_id = p.product_id GROUP BY oi.seller_id, s.seller_city ORDER BY category_count DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9573
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "seller_003",
+      "question": "Tỷ lệ đơn hàng giao trễ của từng người bán (top 10 tệ nhất, ít nhất 50 đơn)?",
+      "category": "seller",
+      "difficulty": "hard",
+      "generated_sql": "SELECT \n  oi.seller_id, \n  s.seller_city, \n  s.seller_state, \n  ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_percentage,\n  COUNT(o.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nWHERE o.order_status = 'delivered' \n  AND o.order_delivered_customer_date IS NOT NULL\nGROUP BY oi.seller_id, s.seller_city, s.seller_state\nHAVING COUNT(o.order_id) >= 50\nORDER BY late_percentage DESC\nLIMIT 10",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(*) AS total_orders, COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_orders, ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_rate FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(*) >= 50 ORDER BY late_rate DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.9,
+        "EM": 0.0,
+        "CM": 0.8619,
+        "CM_detail": {
+          "SELECT": 0.8095,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "HAVING": 0.6667,
+          "ORDER BY": 0.3333,
+          "LIMIT": 1.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.8333,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "late_orders"
+        ],
+        "generated_columns": [
+          "seller_id",
+          "seller_city",
+          "seller_state",
+          "late_percentage",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "seller_id",
+          "seller_city",
+          "seller_state",
+          "total_orders",
+          "late_orders",
+          "late_rate"
+        ],
+        "value_based_col_mapping": {
+          "seller_id": "seller_id",
+          "seller_city": "seller_city",
+          "seller_state": "seller_state",
+          "total_orders": "total_orders",
+          "late_rate": "late_percentage"
+        },
+        "col_score": 0.8333,
+        "row_f1": 1.0,
+        "row_count_generated": 10,
+        "row_count_gold": 10,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "seller_004",
+      "question": "Doanh thu trung bình mỗi đơn hàng của từng người bán?",
+      "category": "seller",
+      "difficulty": "medium",
+      "generated_sql": "SELECT oi.seller_id, \n       ROUND(SUM(oi.price) / COUNT(DISTINCT oi.order_id), 2) AS avg_revenue_per_order\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY oi.seller_id\nORDER BY avg_revenue_per_order DESC\nLIMIT 20",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(SUM(oi.price) / COUNT(DISTINCT oi.order_id), 2) AS avg_revenue_per_order FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY avg_revenue_per_order DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.6,
+        "EM": 0.0,
+        "CM": 0.7963,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 0.3333,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.3333,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "seller_city",
+          "seller_state"
+        ],
+        "generated_columns": [
+          "seller_id",
+          "avg_revenue_per_order"
+        ],
+        "gold_columns": [
+          "seller_id",
+          "seller_city",
+          "seller_state",
+          "avg_revenue_per_order"
+        ],
+        "value_based_col_mapping": {
+          "seller_id": "seller_id",
+          "avg_revenue_per_order": "avg_revenue_per_order"
+        },
+        "col_score": 0.5,
+        "row_f1": 0.6667,
+        "row_count_generated": 20,
+        "row_count_gold": 10,
+        "rows_matched": 10,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 10
+      }
+    },
+    {
+      "id": "seller_005",
+      "question": "Seller mới (chỉ có đơn trong năm 2018) là những ai?",
+      "category": "seller",
+      "difficulty": "hard",
+      "generated_sql": "SELECT DISTINCT oi.seller_id, s.seller_city, s.seller_state\nFROM olist_order_items oi\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE year(o.order_purchase_timestamp) = 2018\n  AND oi.seller_id NOT IN (\n    SELECT DISTINCT oi2.seller_id FROM olist_order_items oi2\n    JOIN olist_orders o2 ON oi2.order_id = o2.order_id\n    WHERE year(o2.order_purchase_timestamp) < 2018\n  )\nLIMIT 20",
+      "gold_sql": "SELECT DISTINCT oi.seller_id, s.seller_city, s.seller_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE year(o.order_purchase_timestamp) = 2018 AND oi.seller_id NOT IN (SELECT DISTINCT oi2.seller_id FROM olist_order_items oi2 JOIN olist_orders o2 ON oi2.order_id = o2.order_id WHERE year(o2.order_purchase_timestamp) < 2018) LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9877
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "trend_001",
+      "question": "Xu hướng tăng trưởng đơn hàng theo từng tháng từ 2016-2018?",
+      "category": "trend",
+      "difficulty": "medium",
+      "generated_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_orders o\nGROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')\nORDER BY month\nLIMIT 36",
+      "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 40",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9167,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9947
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "trend_002",
+      "question": "Tỷ lệ đơn hàng được giao thành công theo từng tháng?",
+      "category": "trend",
+      "difficulty": "medium",
+      "generated_sql": "SELECT \n  date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month,\n  COUNT(CASE WHEN o.order_status = 'delivered' THEN 1 END) AS delivered_orders,\n  COUNT(o.order_id) AS total_orders,\n  ROUND(COUNT(CASE WHEN o.order_status = 'delivered' THEN 1 END) * 100.0 / COUNT(o.order_id), 2) AS delivery_rate\nFROM olist_orders o\nGROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')\nORDER BY month\nLIMIT 50",
+      "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, COUNT(*) AS total_orders, COUNT(CASE WHEN o.order_status = 'delivered' THEN 1 END) AS delivered_orders, ROUND(COUNT(CASE WHEN o.order_status = 'delivered' THEN 1 END) * 100.0 / COUNT(*), 2) AS delivery_rate FROM olist_orders o GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 40",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9015,
+        "CM_detail": {
+          "SELECT": 0.9545,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9961
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "trend_003",
+      "question": "Xu hướng điểm đánh giá trung bình theo từng quý?",
+      "category": "trend",
+      "difficulty": "medium",
+      "generated_sql": "SELECT year(r.review_creation_date) AS yr, quarter(r.review_creation_date) AS qtr,\n  ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews\nFROM olist_order_reviews r\nGROUP BY year(r.review_creation_date), quarter(r.review_creation_date)\nORDER BY yr, qtr\nLIMIT 20",
+      "gold_sql": "SELECT year(r.review_creation_date) AS yr, quarter(r.review_creation_date) AS qtr, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r GROUP BY year(r.review_creation_date), quarter(r.review_creation_date) ORDER BY yr, qtr LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9715
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "trend_004",
+      "question": "Doanh thu theo từng tháng trong năm 2018?",
+      "category": "trend",
+      "difficulty": "medium",
+      "generated_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, ROUND(SUM(oi.price), 2) AS monthly_revenue, COUNT(DISTINCT o.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered' AND year(o.order_purchase_timestamp) = 2018\nGROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')\nORDER BY month\nLIMIT 12",
+      "gold_sql": "SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month, ROUND(SUM(oi.price), 2) AS monthly_revenue FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' AND year(o.order_purchase_timestamp) = 2018 GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM') ORDER BY month LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8852,
+        "CM_detail": {
+          "SELECT": 0.7333,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 1.0,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "extra_columns": [
+          "total_orders"
+        ],
+        "generated_columns": [
+          "month",
+          "monthly_revenue",
+          "total_orders"
+        ],
+        "gold_columns": [
+          "month",
+          "monthly_revenue"
+        ],
+        "value_based_col_mapping": {
+          "month": "month",
+          "monthly_revenue": "monthly_revenue"
+        },
+        "col_score": 1.0,
+        "row_f1": 1.0,
+        "row_count_generated": 8,
+        "row_count_gold": 8,
+        "rows_matched": 8,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "trend_005",
+      "question": "Số lượng đánh giá theo từng ngày trong tháng 12/2017?",
+      "category": "trend",
+      "difficulty": "medium",
+      "generated_sql": "SELECT DATE(r.review_creation_date) AS review_date, COUNT(r.review_id) AS total_reviews\nFROM olist_order_reviews r\nWHERE year(r.review_creation_date) = 2017 AND month(r.review_creation_date) = 12\nGROUP BY DATE(r.review_creation_date)\nORDER BY review_date\nLIMIT 31",
+      "gold_sql": "SELECT DATE(r.review_creation_date) AS review_date, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r WHERE year(r.review_creation_date) = 2017 AND month(r.review_creation_date) = 12 GROUP BY DATE(r.review_creation_date) ORDER BY review_date LIMIT 31",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "join_011",
+      "question": "Sản phẩm nào được bán với giá cao nhất? Hiển thị danh mục và giá bán.",
+      "category": "join",
+      "difficulty": "medium",
+      "generated_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english,\n  MAX(oi.price) AS max_price_brl\nFROM olist_order_items oi\nJOIN olist_products p ON oi.product_id = p.product_id\nLEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY p.product_id, p.product_category_name, t.product_category_name_english\nORDER BY max_price_brl DESC\nLIMIT 10",
+      "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english, MAX(oi.price) AS max_price_brl FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY max_price_brl DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "seller_006",
+      "question": "Người bán nào có phí vận chuyển trung bình thấp nhất (với ít nhất 50 đơn hàng delivered)?",
+      "category": "seller",
+      "difficulty": "medium",
+      "generated_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state,\n  ROUND(AVG(oi.freight_value), 2) AS avg_freight, COUNT(DISTINCT oi.order_id) AS total_orders\nFROM olist_order_items oi\nJOIN olist_sellers s ON oi.seller_id = s.seller_id\nJOIN olist_orders o ON oi.order_id = o.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY oi.seller_id, s.seller_city, s.seller_state\nHAVING COUNT(DISTINCT oi.order_id) >= 50\nORDER BY avg_freight ASC\nLIMIT 10",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(oi.freight_value), 2) AS avg_freight, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT oi.order_id) >= 50 ORDER BY avg_freight ASC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "HAVING": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "customer_001",
+      "question": "Phân bổ khách hàng theo bang?",
+      "category": "customer",
+      "difficulty": "easy",
+      "generated_sql": "SELECT c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS total_customers\nFROM olist_customers c\nGROUP BY c.customer_state\nORDER BY total_customers DESC\nLIMIT 30",
+      "gold_sql": "SELECT c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS total_customers FROM olist_customers c GROUP BY c.customer_state ORDER BY total_customers DESC LIMIT 30",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9579
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "customer_002",
+      "question": "Tỷ lệ khách hàng quay lại mua hơn 1 lần?",
+      "category": "customer",
+      "difficulty": "hard",
+      "generated_sql": "SELECT \n  ROUND(COUNT(CASE WHEN order_count > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS repeat_customer_percentage\nFROM (\n  SELECT customer_unique_id, COUNT(order_id) AS order_count\n  FROM olist_customers c\n  JOIN olist_orders o ON c.customer_id = o.customer_id\n  GROUP BY customer_unique_id\n) sub\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN order_count > 1 THEN 1 END) AS repeat_customers, COUNT(*) AS total_customers, ROUND(COUNT(CASE WHEN order_count > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS repeat_rate FROM (SELECT c.customer_unique_id, COUNT(DISTINCT o.order_id) AS order_count FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) t LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 0.6,
+        "EM": 0.0,
+        "CM": 0.6944,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "GROUP BY": 0.3333,
+          "LIMIT": 0.0
+        },
+        "EX": 0.0,
+        "EX_partial": 0.3333,
+        "VES": 0.0
+      },
+      "execution_success": false,
+      "errors": [],
+      "execution_diff": {
+        "missing_columns": [
+          "repeat_customers",
+          "total_customers"
+        ],
+        "generated_columns": [
+          "repeat_customer_percentage"
+        ],
+        "gold_columns": [
+          "repeat_customers",
+          "total_customers",
+          "repeat_rate"
+        ],
+        "value_based_col_mapping": {
+          "repeat_rate": "repeat_customer_percentage"
+        },
+        "col_score": 0.3333,
+        "row_f1": 1.0,
+        "row_count_generated": 1,
+        "row_count_gold": 1,
+        "rows_matched": 1,
+        "rows_missing_in_gen": 0,
+        "rows_extra_in_gen": 0
+      }
+    },
+    {
+      "id": "customer_003",
+      "question": "Thành phố nào có tổng chi tiêu khách hàng cao nhất?",
+      "category": "customer",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_city, c.customer_state, ROUND(SUM(oi.price + oi.freight_value), 2) AS total_spent\nFROM olist_customers c\nJOIN olist_orders o ON c.customer_id = o.customer_id\nJOIN olist_order_items oi ON o.order_id = oi.order_id\nWHERE o.order_status = 'delivered'\nGROUP BY c.customer_city, c.customer_state\nORDER BY total_spent DESC\nLIMIT 10",
+      "gold_sql": "SELECT c.customer_city, c.customer_state, ROUND(SUM(oi.price + oi.freight_value), 2) AS total_spent FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_city, c.customer_state ORDER BY total_spent DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 0.0,
+          "JOIN": 0.2,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9639
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "customer_004",
+      "question": "Tháng nào trong năm 2017 có nhiều khách hàng mới nhất?",
+      "category": "customer",
+      "difficulty": "hard",
+      "generated_sql": "SELECT date_format(first_purchase, 'yyyy-MM') AS month, COUNT(*) AS new_customers\nFROM (\n  SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase\n  FROM olist_customers c\n  JOIN olist_orders o ON c.customer_id = o.customer_id\n  GROUP BY c.customer_unique_id\n) sub\nWHERE year(first_purchase) = 2017\nGROUP BY date_format(first_purchase, 'yyyy-MM')\nORDER BY new_customers DESC\nLIMIT 12",
+      "gold_sql": "SELECT date_format(first_purchase, 'yyyy-MM') AS month, COUNT(*) AS new_customers FROM (SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) t WHERE year(first_purchase) = 2017 GROUP BY date_format(first_purchase, 'yyyy-MM') ORDER BY month LIMIT 20",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8333,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 0.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9452
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "customer_005",
+      "question": "Khách hàng ở bang nào có thời gian chờ giao hàng trung bình lâu nhất?",
+      "category": "customer",
+      "difficulty": "medium",
+      "generated_sql": "SELECT c.customer_state,\n  ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_wait_days\nFROM olist_orders o\nJOIN olist_customers c ON o.customer_id = c.customer_id\nWHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL\nGROUP BY c.customer_state\nORDER BY avg_wait_days DESC\nLIMIT 10",
+      "gold_sql": "SELECT c.customer_state, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_wait_days FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY c.customer_state ORDER BY avg_wait_days DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 1.0,
+        "CM": 1.0,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "JOIN": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.778
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "order_001",
+      "question": "Số đơn hàng theo từng trạng thái trong năm 2017?",
+      "category": "order",
+      "difficulty": "easy",
+      "generated_sql": "SELECT order_status, COUNT(order_id) AS total_orders\nFROM olist_orders\nWHERE year(order_purchase_timestamp) = 2017\nGROUP BY order_status\nORDER BY total_orders DESC\nLIMIT 20",
+      "gold_sql": "SELECT o.order_status, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o WHERE year(o.order_purchase_timestamp) = 2017 GROUP BY o.order_status ORDER BY total_orders DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8958,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "GROUP BY": 1.0,
+          "ORDER BY": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9779
+      },
+      "execution_success": true,
+      "errors": []
+    },
+    {
+      "id": "order_002",
+      "question": "Số đơn hàng có nhiều hơn 5 sản phẩm?",
+      "category": "order",
+      "difficulty": "medium",
+      "generated_sql": "SELECT COUNT(*) AS total_orders\nFROM (\n  SELECT order_id\n  FROM olist_order_items\n  GROUP BY order_id\n  HAVING COUNT(order_item_id) > 5\n) sub\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(*) AS orders_with_5plus_items FROM (SELECT order_id FROM olist_order_items GROUP BY order_id HAVING COUNT(order_item_id) > 5) subq LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.85,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "GROUP BY": 1.0,
+          "HAVING": 0.6,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "total_orders"
+        ],
+        "gold_columns": [
+          "orders_with_5plus_items"
+        ],
+        "value_based_col_mapping": {
+          "orders_with_5plus_items": "total_orders"
+        }
+      }
+    },
+    {
+      "id": "order_003",
+      "question": "Tỷ lệ đơn hàng được duyệt (approved) trong vòng 1 ngày sau khi đặt?",
+      "category": "order",
+      "difficulty": "medium",
+      "generated_sql": "SELECT \n  COUNT(CASE WHEN datediff(order_approved_at, order_purchase_timestamp) <= 1 THEN 1 END) AS approved_within_1_day,\n  COUNT(order_id) AS total_orders,\n  ROUND(COUNT(CASE WHEN datediff(order_approved_at, order_purchase_timestamp) <= 1 THEN 1 END) * 100.0 / COUNT(order_id), 2) AS approval_percentage\nFROM olist_orders\nWHERE order_approved_at IS NOT NULL\nLIMIT 1",
+      "gold_sql": "SELECT COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) AS fast_approved, COUNT(*) AS total_with_approval, ROUND(COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS fast_approval_rate FROM olist_orders o WHERE o.order_approved_at IS NOT NULL LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.7879,
+        "CM_detail": {
+          "SELECT": 0.6667,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "approved_within_1_day",
+          "total_orders",
+          "approval_percentage"
+        ],
+        "gold_columns": [
+          "fast_approved",
+          "total_with_approval",
+          "fast_approval_rate"
+        ],
+        "value_based_col_mapping": {
+          "fast_approved": "approved_within_1_day",
+          "total_with_approval": "total_orders",
+          "fast_approval_rate": "approval_percentage"
+        }
+      }
+    },
+    {
+      "id": "order_004",
+      "question": "Đơn hàng nào có khoảng cách giữa ngày đặt và ngày giao dài nhất?",
+      "category": "order",
+      "difficulty": "medium",
+      "generated_sql": "SELECT o.order_id,\n  o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn,\n  o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn,\n  datediff(o.order_delivered_customer_date, o.order_purchase_timestamp) AS avg_wait_days\nFROM olist_orders o\nWHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL\nORDER BY avg_wait_days DESC\nLIMIT 10",
+      "gold_sql": "SELECT o.order_id, o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn, o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn, datediff(o.order_delivered_customer_date, o.order_purchase_timestamp) AS total_days FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL ORDER BY total_days DESC LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.8462,
+        "CM_detail": {
+          "SELECT": 0.8333,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "ORDER BY": 0.3333,
+          "LIMIT": 1.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 0.9593
+      },
+      "execution_success": true,
+      "errors": [],
+      "execution_diff": {
+        "generated_columns": [
+          "order_id",
+          "thoi_gian_dat_vn",
+          "thoi_gian_giao_vn",
+          "avg_wait_days"
+        ],
+        "gold_columns": [
+          "order_id",
+          "thoi_gian_dat_vn",
+          "thoi_gian_giao_vn",
+          "total_days"
+        ],
+        "value_based_col_mapping": {
+          "order_id": "order_id",
+          "thoi_gian_dat_vn": "thoi_gian_dat_vn",
+          "thoi_gian_giao_vn": "thoi_gian_giao_vn",
+          "total_days": "avg_wait_days"
+        }
+      }
+    },
+    {
+      "id": "order_005",
+      "question": "Số đơn hàng trung bình mỗi ngày trong năm 2017?",
+      "category": "order",
+      "difficulty": "medium",
+      "generated_sql": "SELECT ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(order_purchase_timestamp)), 1) AS avg_orders_per_day\nFROM olist_orders\nWHERE year(order_purchase_timestamp) = 2017\nLIMIT 1",
+      "gold_sql": "SELECT ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(order_purchase_timestamp)), 1) AS avg_orders_per_day FROM olist_orders WHERE year(order_purchase_timestamp) = 2017 LIMIT 10",
+      "scores": {
+        "SyntaxPass": true,
+        "SafetyPass": true,
+        "PerformancePass": true,
+        "SemanticScore": 1.0,
+        "EM": 0.0,
+        "CM": 0.9091,
+        "CM_detail": {
+          "SELECT": 1.0,
+          "FROM": 1.0,
+          "WHERE": 1.0,
+          "LIMIT": 0.0
+        },
+        "EX": 1.0,
+        "EX_partial": 1.0,
+        "VES": 1.0
+      },
+      "execution_success": true,
+      "errors": []
+    }
+  ]
+}

@@ -621,14 +621,14 @@
       "question": "Danh mục sản phẩm nào có trọng lượng trung bình cao nhất?",
       "category": "product",
       "difficulty": "medium",
-      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(p.product_weight_g), 1) AS avg_weight_g, COUNT(p.product_id) AS product_count FROM olist_products p JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name WHERE p.product_weight_g IS NOT NULL GROUP BY t.product_category_name_english ORDER BY avg_weight_g DESC LIMIT 10"
+      "gold_sql": "SELECT p.product_category_name, t.product_category_name_english, ROUND(AVG(p.product_weight_g), 2) AS avg_weight FROM olist_products p LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY p.product_category_name, t.product_category_name_english ORDER BY avg_weight DESC LIMIT 10"
     },
     {
       "id": "product_003",
       "question": "Danh mục có số lượng sản phẩm dưới 10 là những danh mục nào?",
       "category": "product",
       "difficulty": "medium",
-      "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(p.product_id) AS product_count FROM olist_products p JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english HAVING COUNT(p.product_id) < 10 ORDER BY product_count ASC LIMIT 30",
+      "gold_sql": "SELECT p.product_category_name, t.product_category_name_english, COUNT(p.product_id) AS product_count FROM olist_products p LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY p.product_category_name, t.product_category_name_english HAVING product_count < 10 ORDER BY product_count ASC LIMIT 100",
       "gold_sql_note": "Thêm LIMIT 30"
     },
     {
@@ -636,7 +636,7 @@
       "question": "Tương quan giữa số ảnh sản phẩm và giá bán trung bình?",
       "category": "product",
       "difficulty": "medium",
-      "gold_sql": "SELECT p.product_photos_qty, ROUND(AVG(oi.price), 2) AS avg_price, COUNT(DISTINCT p.product_id) AS product_count FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id WHERE p.product_photos_qty IS NOT NULL GROUP BY p.product_photos_qty ORDER BY p.product_photos_qty LIMIT 30",
+      "gold_sql": "SELECT p.product_photos_qty, ROUND(AVG(oi.price), 2) AS avg_price FROM olist_products p JOIN olist_order_items oi ON p.product_id = oi.product_id GROUP BY p.product_photos_qty ORDER BY p.product_photos_qty ASC LIMIT 20",
       "gold_sql_note": "Thêm LIMIT 30"
     },
     {
@@ -765,7 +765,7 @@
       "question": "Tháng nào trong năm 2017 có nhiều khách hàng mới nhất?",
       "category": "customer",
       "difficulty": "hard",
-      "gold_sql": "SELECT date_format(first_purchase, 'yyyy-MM') AS month, COUNT(*) AS new_customers FROM (SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) t WHERE year(first_purchase) = 2017 GROUP BY date_format(first_purchase, 'yyyy-MM') ORDER BY month LIMIT 20",
+      "gold_sql": "SELECT date_format(first_purchase, 'yyyy-MM') AS month, COUNT(*) AS new_customers FROM (SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) sub WHERE year(first_purchase) = 2017 GROUP BY date_format(first_purchase, 'yyyy-MM') ORDER BY new_customers DESC LIMIT 12",
       "gold_sql_note": "Thêm LIMIT 20"
     },
     {
@@ -804,7 +804,7 @@
       "question": "Đơn hàng nào có khoảng cách giữa ngày đặt và ngày giao dài nhất?",
       "category": "order",
       "difficulty": "medium",
-      "gold_sql": "SELECT o.order_id, o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn, o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn, datediff(o.order_delivered_customer_date, o.order_purchase_timestamp) AS total_days FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL ORDER BY total_days DESC LIMIT 10",
+      "gold_sql": "SELECT o.order_id,\n  o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn,\n  o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn,\n  datediff(o.order_delivered_customer_date, o.order_purchase_timestamp) AS avg_wait_days\nFROM olist_orders o\nWHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL\nORDER BY avg_wait_days DESC\nLIMIT 10",
       "gold_sql_note": "Hiển thị timestamps +7h cho user, LIMIT 10"
     },
     {
@@ -812,7 +812,7 @@
       "question": "Số đơn hàng trung bình mỗi ngày trong năm 2017?",
       "category": "order",
       "difficulty": "medium",
-      "gold_sql": "SELECT ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(order_purchase_timestamp)), 1) AS avg_orders_per_day FROM olist_orders WHERE year(order_purchase_timestamp) = 2017 LIMIT 10",
+      "gold_sql": "SELECT ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(order_purchase_timestamp)), 1) AS avg_orders_per_day FROM olist_orders WHERE year(order_purchase_timestamp) = 2017 LIMIT 1",
       "gold_sql_note": "Single row - LIMIT 1"
     }
   ]

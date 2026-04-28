@@ -16,6 +16,7 @@
 | 6 | 20260427_023844 | 20 | 100% | 25.0% | 83.4% | 65.0% | 79.6% | 64.0% | 85.0% | 85.30% | Cập nhật lại System Prompt (Alias, LIMIT <=50, Few-shot mới) → EX đạt 65%, Overall đạt 85.3%. Đã đạt Target(chỉ 20 mẫu). |
 | 7 | 20260427_025150 | 20 | 100% | 25.0% | 82.2% | 70.0% | 87.1% | 69.7% | 90.0% | 87.95% | Tiếp tục tối ưu → EX chạm mốc 70%, Overall ~88%. Lỗi Alias và LIMIT gần như được triệt tiêu, tập trung vào Semantic. |
 | 8 | 20260427_030749 | 20 | 100% | 45.0% | 87.2% | 85.0% | 94.2% | 84.1% | 95.0% | 94.05% | Áp dụng 4 fix Semantic mở rộng ngữ cảnh → EX nhảy vọt lên 85%, Overall 94.05%. **Đã vượt Target!(chỉ 20 mẫu)** |
+| 9 | 20260429_003732 | 100 | 100% | 21.0% | 83.0% | 59.0% | 78.6% | 58.0% | 73.0% | 83.08% | Re-test 100 mẫu sau khi siết LIMIT & thêm Pre-flight. EX tăng 47% $\rightarrow$ 59%. Gặp lỗi Semantic do "thêm cột thừa" (overfit vào tập 20 mẫu). |
 
 **Mục tiêu:** EX ≥ 90%, Semantic ≥ 80%, Overall ≥ 85%
 
@@ -175,3 +176,34 @@ Mặc dù mốc 20 câu đã rất tốt, khi nhìn lại các report 100 mẫu 
 - Giảm mạnh lỗi **extra rows** (đặc biệt các case hard đang bị LIMIT 50/100).
 - Giảm lỗi **missing_columns** ở nhóm payment/revenue/review/product.
 - Tăng EX của nhóm medium/hard mà không ảnh hưởng safety/syntax (đang 100%).
+
+---
+
+## 8. Phân tích lỗi từ report (#9 — `20260429_003732`)
+
+**Tổng quan:** 100 mẫu.
+- **EX:** `59.0%` (Tăng 12% so với mốc 100 mẫu cũ `47%`, nhưng thấp hơn so với kì vọng).
+- **Semantic Match:** `73.0%`
+- **Overall:** `83.08%`
+
+### 8.1 Phân loại pattern lỗi (41 case fail EX)
+
+**1. Lỗi do Overfitting "Mở rộng ngữ cảnh" (Extra columns) - Chiếm đa số (37 Semantic mismatches):**
+- AI làm đúng theo **Rule 12 & 21** (luôn thêm `total_orders` cho doanh thu, luôn thêm `total_value` cho thanh toán, luôn thêm tên danh mục cho thống kê sản phẩm).
+- Tuy nhiên, Gold SQL của tập 100 mẫu **KHÔNG** yêu cầu các cột mở rộng này.
+- *Ví dụ:* `aggregate_010` dư `total_orders`, `payment_002` dư `total_value`, `review_003` dư `product_category_name`. Các rule tối ưu trên 20 mẫu vô tình làm AI trở nên "cầm đèn chạy trước ô tô" trên tập 100 mẫu.
+
+**2. Lỗi Alias không khớp:**
+- Bảng canonical ép tên danh mục tiếng Anh thành `category_english` (Rule 13), nhưng Gold SQL của tập 100 mẫu đa phần lại dùng AS `category`.
+- *Ví dụ:* `join_001`, `review_003` bị đánh giá là missing cột `category`.
+
+**3. Lỗi LIMIT do suy diễn hoặc Gold SQL bất thường:**
+- `payment_003`: Gold dùng `LIMIT 24`, AI dùng `LIMIT 20` (theo rule mặc định cho GROUP BY).
+- `geography_002`: Gold dùng `LIMIT 10`, AI dùng `LIMIT 27` (suy diễn theo toàn bộ 27 bang).
+- `join_006`: Gold dùng `LIMIT 5`, AI dùng `LIMIT 1`.
+
+### 8.2 Action Items (Vòng tiếp theo)
+
+- [x] **Gỡ bỏ/Nới lỏng Rule 12 & Rule 21:** Chuyển các chỉ thị "Mở rộng ngữ cảnh" từ BẮT BUỘC (`LUÔN`) sang TÙY CHỌN, hoặc yêu cầu bám sát hoàn toàn vào từ khóa của câu hỏi. KHÔNG tự ý thêm `total_orders` hay `total_value` nếu user không nhắc đến.
+- [x] **Sửa Alias category:** Cập nhật lại Rule 13: `product_category_name_english` $\rightarrow$ `category` (thay vì `category_english`) để đồng bộ với Gold SQL.
+- [x] **Tinh chỉnh Rule LIMIT:** Xóa bỏ các quy định cứng nhắc như "LIMIT 20 cho GROUP BY", quay về việc phân tích intent ranking hoặc giữ giới hạn an toàn hơn để tránh sai khác số dòng so với Gold.

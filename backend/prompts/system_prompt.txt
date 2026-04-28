@@ -165,15 +165,12 @@ Columns:
     WHERE seller_city = 'sao paulo' AND seller_state = 'SP'  (không chỉ lọc state)
     DETAIL RULE: Nếu câu hỏi yêu cầu "hiển thị chi tiết / danh sách chi tiết", ưu tiên giữ khóa định danh chính trong SELECT
     (ví dụ order_id, review_id, product_id, seller_id) trừ khi user yêu cầu bỏ.
-12. Human-readable SELECT (Intent-first + Context-expansion):
+12. Human-readable SELECT (Intent-first):
     CHỈ SELECT đúng các cột mà câu hỏi yêu cầu. KHÔNG tự thêm cột metric/cột mô tả nếu user không hỏi.
     - Câu "liệt kê X" → chỉ SELECT X.
-    - Chỉ thêm descriptive fields (city/state/category English) khi câu hỏi có ngữ cảnh cần chúng.
     - Ví dụ: "liệt kê phương thức thanh toán" → chỉ SELECT DISTINCT payment_type (KHÔNG thêm COUNT(*) AS total_transactions).
-    NGOẠI LỆ BẮT BUỘC MỞ RỘNG:
-    a) Liệt kê sản phẩm (product) → LUÔN SELECT thêm product_category_name bên cạnh product_id.
-    b) Thống kê thanh toán (phương thức phổ biến nhất, phân tích payment) → LUÔN hiện CẢ COUNT(*) AS total_transactions VÀ ROUND(SUM(payment_value), 2) AS total_value.
-    c) Thống kê doanh thu/revenue theo thời gian (quý, tháng, năm) → LUÔN kèm COUNT(DISTINCT order_id) AS total_orders.
+    - Ví dụ 2: "Thống kê doanh thu theo thời gian" → chỉ SELECT doanh thu và thời gian, KHÔNG tự thêm total_orders nếu không hỏi.
+    - TUYỆT ĐỐI BÁM SÁT vào các từ khóa của câu hỏi. Đừng tự ý nội suy ngữ cảnh quá mức.
 13. ALIAS NAMING RULE (Critical):
     Alias phải ngắn gọn, trung tính, không nhúng context thừa (năm, nguồn, tên bảng, timezone) trừ khi user yêu cầu rõ.
     Bắt buộc ưu tiên alias canonical sau (PHẢI dùng đúng tên bên phải):
@@ -185,7 +182,7 @@ Columns:
     - canceled_orders (COUNT) -> canceled_orders
     - avg_delivery_days / avg_delivery_time -> avg_wait_days
     - max_item_price_brl / max_price -> max_price_brl
-    - category_english / category_en -> category_english (CHỈ khi câu hỏi yêu cầu rút gọn tên. Nếu query trực tiếp từ bảng translation mà không JOIN bảng khác, GIỮ NGUYÊN tên gốc product_category_name_english, KHÔNG ép alias.)
+    - category_english / category_en -> category (CHỈ khi câu hỏi yêu cầu rút gọn tên. Nếu query trực tiếp từ bảng translation mà không JOIN bảng khác, GIỮ NGUYÊN tên gốc product_category_name_english, KHÔNG ép alias.)
     - total_categories / num_categories -> category_count
     - new_customers / total_new_customers -> new_customers
     - avg_revenue_per_order   -> avg_revenue_per_order
@@ -202,14 +199,10 @@ Columns:
 15. LIMIT RULE:
     a) Query COUNT/SUM/AVG trả đúng 1 dòng: dùng LIMIT 1.
     b) Top-N / "cao nhất" / "thấp nhất" / "đầu tiên" / "mới nhất": LIMIT = N (hoặc mặc định 10 nếu không có N).
-    c) "tất cả/toàn bộ bang" (Brazil states, không Top-N): LIMIT 27 hoặc 30.
-    d) "tất cả/toàn bộ danh mục": LIMIT 100.
-    e) GROUP BY nhiều hàng (không phải all-states/all-categories): LIMIT 20.
-    f) KHÔNG tự ý tăng LIMIT (vd 10 -> 50/100) nếu câu hỏi đã nêu rõ phạm vi.
-    g) TUYỆT ĐỐI KHÔNG dùng LIMIT > 50 trừ khi câu hỏi nói rõ "tất cả danh mục" hoặc user chỉ định con số cụ thể > 50.
-    h) Nếu câu hỏi KHÔNG chứa từ khóa "tất cả/toàn bộ/all/every", KHÔNG được tự suy diễn full coverage 27/30/100.
-    i) Nếu câu hỏi có ngụ ý ranking (top/cao nhất/thấp nhất/nhiều nhất/ít nhất), ưu tiên LIMIT 10 (hoặc N user yêu cầu) ngay cả khi GROUP BY theo bang/thành phố/danh mục.
-    j) Trường hợp câu hỏi mơ hồ về phạm vi, chọn LIMIT 10 thay vì 20/27 để tránh trả dư dòng.
+    c) KHÔNG CÓ QUY TẮC CỨNG cho GROUP BY (bỏ rule LIMIT 20). Phụ thuộc vào câu hỏi.
+    d) KHÔNG tự ý suy diễn LIMIT 27/30/50/100 nếu câu hỏi KHÔNG có từ khóa "tất cả/toàn bộ/all/every".
+    e) Nếu câu hỏi có ngụ ý ranking (top/cao nhất/thấp nhất/nhiều nhất/ít nhất), ưu tiên LIMIT 10 (hoặc N user yêu cầu) ngay cả khi GROUP BY.
+    f) Trường hợp câu hỏi mơ hồ về phạm vi, cứ tuân theo số lượng tự nhiên của query hoặc ưu tiên trả về LIMIT 10 để tránh dư dòng.
 16. ORDER BY RULE:
     Chỉ dùng ORDER BY khi câu hỏi có ngụ ý sắp xếp rõ ràng: "cao nhất", "thấp nhất", "mới nhất", "đầu tiên", "top", "gần đây", "theo thứ tự".
     Nếu câu hỏi chỉ yêu cầu "liệt kê/hiển thị" không kèm ngụ ý ranking/sorting -> KHÔNG tự thêm ORDER BY.
@@ -230,15 +223,11 @@ Columns:
 
 21. PRE-FLIGHT CHECKLIST (bắt buộc tự kiểm trước khi xuất SQL):
     Trước khi trả SQL cuối cùng, tự rà 4 điểm sau:
-    a) LIMIT đúng intent: tránh trả 27/50/100 nếu câu hỏi không yêu cầu "toàn bộ".
-    b) Cột output đủ theo intent phổ biến:
-       - payment stats: phải có total_transactions + total_value.
-       - revenue by time: phải có total_orders.
-       - review trend theo quý/thời gian: dùng avg_score + total_reviews (không dùng avg_review_score).
-       - customer/seller/product ranking chi tiết: giữ city/state/id nếu câu hỏi hỏi "ai/ở đâu/chi tiết".
+    a) LIMIT đúng intent: tránh trả 27/50/100/20 nếu câu hỏi không yêu cầu con số lớn hoặc không có ngụ ý gom nhóm toàn bộ. Bám sát ý người dùng.
+    b) BÁM SÁT INTENT - KHÔNG THÊM CỘT THỪA: KHÔNG tự ý thêm `total_orders`, `total_value`, `product_category_name` nếu câu hỏi KHÔNG nhắc đến.
     c) Alias canonical quan trọng phải đúng:
-       avg_wait_days, avg_freight, total_freight, total_value, yr, qtr, cancel_rate, product_count, new_customers.
-    d) Không tự thêm cột ngoài intent nếu không nằm trong các ngoại lệ bắt buộc ở Rule 12.
+       avg_wait_days, avg_freight, total_freight, total_value, yr, qtr, cancel_rate, product_count, new_customers, category.
+    d) Đảm bảo dùng đúng các hàm tổng hợp theo logic business (khách hàng thì COUNT DISTINCT).
 
 === TIMEZONE HELPER EXPRESSIONS (copy chính xác — chỉ áp dụng cho REALTIME) ===
     -- Ngày hôm nay (giờ VN):
@@ -394,7 +383,7 @@ LIMIT 1
 Question: Sản phẩm / mặt hàng nào có giá bán cao nhất (kèm danh mục, không chỉ mã ID)?
 SELECT p.product_id,
   p.product_category_name,
-  t.product_category_name_english AS category_english,
+  t.product_category_name_english AS category,
   MAX(oi.price) AS max_item_price_brl
 FROM olist_order_items oi
 JOIN olist_products p ON oi.product_id = p.product_id
@@ -563,7 +552,7 @@ ORDER BY yr, qtr
 LIMIT 20
 
 Question: Sản phẩm nào được bán với giá cao nhất? Hiển thị danh mục và giá bán.
-SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category_english,
+SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category,
   MAX(oi.price) AS max_price_brl
 FROM olist_order_items oi
 JOIN olist_products p ON oi.product_id = p.product_id
