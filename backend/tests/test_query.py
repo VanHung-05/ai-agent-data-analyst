@@ -5,7 +5,11 @@
 """
 
 import pytest
-from utils.sql_validator import validate_sql, sanitize_sql
+from utils.sql_validator import (
+    is_natural_language_write_request,
+    sanitize_sql,
+    validate_sql,
+)
 
 
 class TestSQLValidator:
@@ -55,6 +59,26 @@ class TestSQLValidator:
         assert is_valid is False
 
 
+class TestNaturalLanguageWritePolicy:
+    """Chặn yêu cầu ghi/sửa/xóa bằng ngôn ngữ tự nhiên (trước khi sinh SQL)."""
+
+    def test_block_update_all_prices_to_zero_vi(self):
+        assert is_natural_language_write_request("Hãy update toàn bộ price về 0") is True
+
+    def test_block_update_prices_english(self):
+        assert is_natural_language_write_request("UPDATE all prices to 0 please") is True
+
+    def test_block_delete_from_table(self):
+        assert is_natural_language_write_request("DELETE FROM olist_orders WHERE 1=1") is True
+
+    def test_allow_select_analytics(self):
+        assert is_natural_language_write_request("Thống kê doanh thu theo tháng năm 2017") is False
+
+    def test_allow_read_only_question_with_update_word(self):
+        # “cập nhật” theo nghĩa báo cáo / hiển thị — không có tín hiệu ghi
+        assert is_natural_language_write_request("Cập nhật cho tôi top 5 bang có điểm review cao nhất") is False
+
+
 class TestSanitizeSQL:
     """Test SQL sanitizer — tự động thêm LIMIT"""
 
@@ -83,32 +107,57 @@ class TestAgentService:
         assert _clean_sql_output("SELECT * FROM t -- comment of LLM") == "SELECT * FROM t"
 
     def test_recommend_chart(self):
-        from services.agent_service import _recommend_chart
+        from services.visualize_agent import recommend_chart
 
-        # Test time-series -> line chart
-        assert _recommend_chart("doanh thu theo thang", "SELECT month, sum(price) FROM x", [{"month": "2026-01", "revenue": 100}])["chart_type"] == "line"
+        # Test time-series -> line chart (≥2 điểm thời gian)
+        assert recommend_chart(
+            "doanh thu theo thang",
+            "SELECT month, sum(price) FROM x",
+            [{"month": "2026-01", "revenue": 100}, {"month": "2026-02", "revenue": 200}],
+            None,
+        )["chart_type"] == "line"
 
-        # Test proportion -> pie chart
-        assert _recommend_chart("tỷ lệ đơn hàng bị hủy", "SELECT status, cnt FROM x", [{"status": "cancelled", "cnt": 10}])["chart_type"] == "pie"
+        # Test proportion -> pie chart (≥2 nhóm)
+        assert recommend_chart(
+            "tỷ lệ đơn hàng bị hủy",
+            "SELECT status, cnt FROM x",
+            [{"status": "cancelled", "cnt": 10}, {"status": "delivered", "cnt": 90}],
+            None,
+        )["chart_type"] == "pie"
 
         # Test top/ranking -> bar chart
-        assert _recommend_chart("Top 5 san pham", "SELECT category, revenue FROM x GROUP BY category", [{"category": "a", "revenue": 1}])["chart_type"] == "bar"
+        assert recommend_chart(
+            "Top 5 san pham",
+            "SELECT category, revenue FROM x GROUP BY category",
+            [{"category": "a", "revenue": 1}, {"category": "b", "revenue": 2}],
+            None,
+        )["chart_type"] == "bar"
 
-        # Test single value -> metric
-        assert _recommend_chart("tong doanh thu", "SELECT sum(price) FROM x", [{"total": 1}])["chart_type"] == "metric"
+        # Một dòng KPI → table (heuristic hiện tại)
+        assert recommend_chart(
+            "tong doanh thu",
+            "SELECT sum(price) AS total FROM x",
+            [{"total": 1}],
+            None,
+        )["chart_type"] == "table"
 
         # Default view when nothing special
-        assert _recommend_chart("liet ke don hang", "SELECT id FROM x", [{"id": "o1"}, {"id": "o2"}])["chart_type"] == "table"
+        assert recommend_chart(
+            "liet ke don hang",
+            "SELECT id FROM x",
+            [{"id": "o1"}, {"id": "o2"}],
+            None,
+        )["chart_type"] == "table"
 
     def test_parse_query_result(self):
-        from services.agent_service import _parse_query_result
-        
+        from services.query_result_parser import parse_query_result
+
         # Databricks RAW result as list of tuples (ast evaluable)
         raw = "[(1, 'Alice'), (2, 'Bob')]"
-        res = _parse_query_result(raw)
+        res = parse_query_result(raw)
         assert len(res) == 2
         assert res[0]["col_0"] == 1
         assert res[1]["col_1"] == "Bob"
-        
+
         # Databricks RAW result as single value
-        assert _parse_query_result("42")[0]["result"] == "42"
+        assert parse_query_result("42")[0]["result"] == "42"

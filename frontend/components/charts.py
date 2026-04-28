@@ -162,7 +162,35 @@ def _area(df: pd.DataFrame, viz: dict, title: str):
 
 @_register("histogram")
 def _histogram(df: pd.DataFrame, viz: dict, title: str):
-    x, _ = _resolve_axes(df, viz, "histogram")
+    cols = [str(c) for c in df.columns]
+    numeric_cols = _get_numeric_columns(df)
+
+    # Từ khóa nhận biết cột "metric" (số liệu đo lường)
+    metric_kws = ["total", "count", "revenue", "amount", "value", "sales",
+                  "sum", "avg", "so_don", "so_luong", "doanh_thu", "don_hang"]
+
+    x_hint = str(viz.get("x")) if viz.get("x") else None
+
+    # Chọn cột x: ưu tiên time-like, sau đó non-metric, cuối mới fallback
+    if x_hint in cols and not any(kw in x_hint.lower() for kw in metric_kws):
+        x = x_hint
+    else:
+        time_cols = [c for c in cols if _is_time_like_col(c)]
+        non_metric = [c for c in cols if not any(kw in c.lower() for kw in metric_kws)]
+        if time_cols:
+            x = time_cols[0]
+        elif non_metric:
+            x = non_metric[0]
+        else:
+            x = cols[0]
+
+    # Nếu có cột metric rõ ràng (gio vs so_don) → vẽ bar chart đúng hơn histogram
+    y_candidates = [c for c in numeric_cols if c != x]
+    if y_candidates:
+        y = _pick_metric_col(y_candidates)
+        text_auto = ".2s" if pd.api.types.is_numeric_dtype(df[y]) else None
+        return px.bar(df, x=x, y=y, title=title, text_auto=text_auto)
+
     return px.histogram(df, x=x, title=title)
 
 
@@ -178,7 +206,17 @@ def _metric(df: pd.DataFrame, viz: dict, title: str):
 
 def _is_time_like_col(col: str) -> bool:
     name = str(col).lower()
-    return any(k in name for k in ["date", "time", "month", "year", "yr", "quarter", "qtr", "day"])
+    return any(k in name for k in [
+        "date", "time", "month", "year", "yr", "quarter", "qtr", "day",
+        "hour",
+        # Tiếng Việt:
+        "gio",    # giờ (hour)
+        "thang",  # tháng (month)
+        "nam",    # năm (year)
+        "quy",    # quý (quarter)
+        "ngay",   # ngày (day)
+        "tuan",   # tuần (week)
+    ])
 
 
 def _pick_metric_col(cols: list[str]) -> str:

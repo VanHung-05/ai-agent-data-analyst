@@ -35,7 +35,12 @@ from services.query_result_parser import parse_query_result
 from services.router_agent import route_detail
 from services.nlg_agent import generate_natural_language_answer
 from services.visualize_agent import recommend_chart
-from utils.sql_validator import validate_sql, sanitize_sql
+from utils.sql_validator import (
+    WRITE_REQUEST_REFUSAL_VI,
+    is_natural_language_write_request,
+    sanitize_sql,
+    validate_sql,
+)
 from utils.logger import logger
 
 
@@ -412,6 +417,27 @@ async def process_question(
         "visualization_recommendation": {"chart_type": "table"},
         "error": None,
     }
+
+    # ── Chính sách read-only: chặn yêu cầu sửa/xóa/ghi bằng ngôn ngữ tự nhiên (trước LLM/SQL) ──
+    if is_natural_language_write_request(question):
+        await _emit_progress(progress_hook, "policy_block", "Chặn yêu cầu thay đổi dữ liệu (read-only)...")
+        result["answer"] = WRITE_REQUEST_REFUSAL_VI
+        result["routing_info"] = {
+            "intent": "conversation",
+            "scores": {"conversation": 1.0, "sql": 0.0, "visualize": 0.0},
+            "selected_agents": ["conversation"],
+            "routing_method": "policy_block",
+            "block_reason": "natural_language_write_request",
+        }
+        result["data"] = [{"policy": "read_only", "detail": result["routing_info"]["block_reason"]}]
+        result["row_count"] = 1
+        result["visualization_recommendation"] = {
+            "chart_type": "conversation",
+            "reason": "Blocked: data modification request (read-only policy)",
+        }
+        result["error"] = None
+        await _emit_progress(progress_hook, "done", "Hoàn tất.")
+        return result
 
     # ── Bước 1: Khởi tạo LLM ──
     try:
