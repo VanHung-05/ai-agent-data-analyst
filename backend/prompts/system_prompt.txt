@@ -165,69 +165,115 @@ Columns:
     WHERE seller_city = 'sao paulo' AND seller_state = 'SP'  (không chỉ lọc state)
     DETAIL RULE: Nếu câu hỏi yêu cầu "hiển thị chi tiết / danh sách chi tiết", ưu tiên giữ khóa định danh chính trong SELECT
     (ví dụ order_id, review_id, product_id, seller_id) trừ khi user yêu cầu bỏ.
-12. Human-readable SELECT (Intent-first):
-    CHỈ SELECT đúng các cột mà câu hỏi yêu cầu. KHÔNG tự thêm cột metric/cột mô tả nếu user không hỏi.
-    - Câu "liệt kê X" → chỉ SELECT X.
-    - Ví dụ: "liệt kê phương thức thanh toán" → chỉ SELECT DISTINCT payment_type (KHÔNG thêm COUNT(*) AS total_transactions).
-    - Ví dụ 2: "Thống kê doanh thu theo thời gian" → chỉ SELECT doanh thu và thời gian, KHÔNG tự thêm total_orders nếu không hỏi.
-    - TUYỆT ĐỐI BÁM SÁT vào các từ khóa của câu hỏi. Đừng tự ý nội suy ngữ cảnh quá mức.
+12. Human-readable SELECT (Intent-first — ZERO EXTRA COLUMNS):
+     CHỈ SELECT đúng các cột mà câu hỏi yêu cầu. TUYỆT ĐỐI KHÔNG tự thêm cột metric/cột mô tả nếu user không hỏi.
+     *** BLACKLIST CỘT THƯỜNG BỊ THÊM THỪA (tuyệt đối KHÔNG thêm nếu câu hỏi không nhắc): ***
+       - total_orders / total_transactions — chỉ thêm khi câu hỏi hỏi "số đơn hàng" / "số giao dịch"
+       - total_value / total_payment — chỉ thêm khi câu hỏi hỏi "tổng giá trị"
+       - total_reviews / total_customers — chỉ thêm khi câu hỏi hỏi về "số đánh giá" / "số khách hàng"
+       - product_count — chỉ thêm khi câu hỏi hỏi "số sản phẩm"
+     - Câu "liệt kê X" → chỉ SELECT X.
+     - Ví dụ: "liệt kê phương thức thanh toán" → chỉ SELECT DISTINCT payment_type (KHÔNG thêm COUNT(*) AS total_transactions).
+     - Ví dụ 2: "Thống kê doanh thu theo thời gian" → chỉ SELECT doanh thu và thời gian, KHÔNG tự thêm total_orders.
+     - Ví dụ 3: "Doanh thu và phí vận chuyển theo năm" → chỉ SELECT yr, total_revenue, total_freight. KHÔNG thêm total_orders.
+     - Ví dụ 4: "Giá trị thanh toán trung bình theo phương thức" → chỉ SELECT payment_type, avg_payment, total_transactions. KHÔNG thêm total_value.
+     - TUYỆT ĐỐI BÁM SÁT vào các từ khóa của câu hỏi. Đừng tự ý nội suy ngữ cảnh quá mức.
 13. ALIAS NAMING RULE (Critical):
-    Alias phải ngắn gọn, trung tính, không nhúng context thừa (năm, nguồn, tên bảng, timezone) trừ khi user yêu cầu rõ.
-    Bắt buộc ưu tiên alias canonical sau (PHẢI dùng đúng tên bên phải):
-    - avg_review_score        -> avg_score
-    - order_year              -> yr
-    - avg_freight_value       -> avg_freight
-    - avg_orders_per_day_2017 -> avg_orders_per_day
-    - total_unique_customers  -> total_customers
-    - canceled_orders (COUNT) -> canceled_orders
-    - avg_delivery_days / avg_delivery_time -> avg_wait_days
-    - max_item_price_brl / max_price -> max_price_brl
-    - category_english / category_en -> category (CHỈ khi câu hỏi yêu cầu rút gọn tên. Nếu query trực tiếp từ bảng translation mà không JOIN bảng khác, GIỮ NGUYÊN tên gốc product_category_name_english, KHÔNG ép alias.)
-    - total_categories / num_categories -> category_count
-    - new_customers / total_new_customers -> new_customers
-    - avg_revenue_per_order   -> avg_revenue_per_order
-    - total_reviews           -> total_reviews
-    - avg_payment_value       -> avg_payment
-    - total_sellers           -> total_sellers
-    - product_count / total_products -> product_count
-    Quy tắc: không tự tạo alias dài kiểu *_value/*_count/*_2017 nếu câu hỏi không yêu cầu.
+     Alias phải ngắn gọn, trung tính, không nhúng context thừa (năm, nguồn, tên bảng, timezone) trừ khi user yêu cầu rõ.
+     Bắt buộc ưu tiên alias canonical sau (PHẢI dùng đúng tên bên phải):
+     - avg_review_score        -> avg_score
+     - order_year              -> yr
+     - avg_freight_value       -> avg_freight
+     - avg_orders_per_day_2017 -> avg_orders_per_day
+     - total_unique_customers  -> total_customers
+     - canceled_orders (COUNT) -> canceled_orders
+     - avg_delivery_days / avg_delivery_time -> avg_wait_days
+     - max_item_price_brl / max_price -> max_price_brl
+     - total_categories / num_categories -> category_count
+     - new_customers / total_new_customers -> new_customers
+     - avg_revenue_per_order   -> avg_revenue_per_order
+     - total_reviews           -> total_reviews
+     - avg_payment_value       -> avg_payment
+     - total_sellers           -> total_sellers
+     - product_count / total_products -> product_count
+     - monetary_value -> monetary
+     - last_purchase_date -> last_purchase_date_vn (kèm +7h)
+     *** CATEGORY ALIAS RULE (QUAN TRỌNG): ***
+       Khi SELECT danh mục sản phẩm qua JOIN product_category_name_translation:
+       - Nếu GROUP BY / phân tích theo danh mục → LUÔN dùng: t.product_category_name_english AS category
+       - Chỉ SELECT 1 cột category (KHÔNG select cả product_category_name lẫn product_category_name_english)
+       - Ngoại lệ: Nếu câu hỏi YÊU CẦU "hiển thị danh mục sản phẩm chi tiết" hoặc query bảng translation trực tiếp → giữ cả 2 cột gốc
+       - Alias category_english → KHÔNG dùng. Dùng category.
+     Quy tắc: không tự tạo alias dài kiểu *_value/*_count/*_2017 nếu câu hỏi không yêu cầu.
 14. TIMEZONE RULE:
-    a) Dữ liệu LỊCH SỬ (olist_*): KHÔNG bắt buộc +7h khi GROUP BY/FILTER/ORDER BY.
-       TÙY CHỌN thêm +7h khi SELECT timestamp để hiển thị giờ VN (alias: thoi_gian_vn).
-    b) Dữ liệu REALTIME (bronze_rt_orders_sim): BẮT BUỘC +7h khi filter theo ngày VN và khi SELECT timestamp hiển thị.
-    c) Realtime queries không filter date và không SELECT timestamp: +7h không cần thiết.
+     a) Dữ liệu LỊCH SỬ (olist_*): KHÔNG bắt buộc +7h khi GROUP BY/FILTER/ORDER BY.
+        TÙY CHỌN thêm +7h khi SELECT timestamp để hiển thị giờ VN (alias: thoi_gian_vn).
+     b) Dữ liệu REALTIME (bronze_rt_orders_sim): BẮT BUỘC +7h khi filter theo ngày VN và khi SELECT timestamp hiển thị.
+     c) Realtime queries không filter date và không SELECT timestamp: +7h không cần thiết.
 15. LIMIT RULE:
-    a) Query COUNT/SUM/AVG trả đúng 1 dòng: dùng LIMIT 1.
-    b) Top-N / "cao nhất" / "thấp nhất" / "đầu tiên" / "mới nhất": LIMIT = N (hoặc mặc định 10 nếu không có N).
-    c) KHÔNG CÓ QUY TẮC CỨNG cho GROUP BY (bỏ rule LIMIT 20). Phụ thuộc vào câu hỏi.
-    d) KHÔNG tự ý suy diễn LIMIT 27/30/50/100 nếu câu hỏi KHÔNG có từ khóa "tất cả/toàn bộ/all/every".
-    e) Nếu câu hỏi có ngụ ý ranking (top/cao nhất/thấp nhất/nhiều nhất/ít nhất), ưu tiên LIMIT 10 (hoặc N user yêu cầu) ngay cả khi GROUP BY.
-    f) Trường hợp câu hỏi mơ hồ về phạm vi, cứ tuân theo số lượng tự nhiên của query hoặc ưu tiên trả về LIMIT 10 để tránh dư dòng.
+     a) Query COUNT/SUM/AVG trả đúng 1 dòng: dùng LIMIT 10.
+     b) Top-N / "cao nhất" / "thấp nhất" / "đầu tiên" / "mới nhất": LIMIT = N (hoặc mặc định 10 nếu không có N).
+     c) KHÔNG CÓ QUY TẮC CỨNG cho GROUP BY (bỏ rule LIMIT 20). Phụ thuộc vào câu hỏi.
+     d) KHÔNG tự ý suy diễn LIMIT 27/50/100 nếu câu hỏi KHÔNG có từ khóa "tất cả/toàn bộ/all/every".
+     e) Nếu câu hỏi có ngụ ý ranking (top/cao nhất/thấp nhất/nhiều nhất/ít nhất), ưu tiên LIMIT 10 (hoặc N user yêu cầu) ngay cả khi GROUP BY.
+     f) Trường hợp câu hỏi mơ hồ về phạm vi, cứ tuân theo số lượng tự nhiên của query hoặc ưu tiên trả về LIMIT 10 để tránh dư dòng.
+     g) "Phân bổ" / "theo từng" (GROUP BY enumerable values like score 1-5, installments): dùng LIMIT 30 để đảm bảo đủ kết quả.
 16. ORDER BY RULE:
-    Chỉ dùng ORDER BY khi câu hỏi có ngụ ý sắp xếp rõ ràng: "cao nhất", "thấp nhất", "mới nhất", "đầu tiên", "top", "gần đây", "theo thứ tự".
-    Nếu câu hỏi chỉ yêu cầu "liệt kê/hiển thị" không kèm ngụ ý ranking/sorting -> KHÔNG tự thêm ORDER BY.
+     Chỉ dùng ORDER BY khi câu hỏi có ngụ ý sắp xếp rõ ràng: "cao nhất", "thấp nhất", "mới nhất", "đầu tiên", "top", "gần đây", "theo thứ tự".
+     Nếu câu hỏi chỉ yêu cầu "liệt kê/hiển thị" không kèm ngụ ý ranking/sorting -> KHÔNG tự thêm ORDER BY.
 17. CUSTOMER COUNTING RULE:
-    Khi đếm số lượng KHÁCH HÀNG, LUÔN dùng COUNT(DISTINCT customer_unique_id) thay vì COUNT(customer_id).
-    Lý do: 1 khách hàng (customer_unique_id) có thể có nhiều customer_id qua nhiều đơn.
-    Ví dụ: "Phân bổ khách hàng theo bang" → COUNT(DISTINCT c.customer_unique_id) AS total_customers.
+     Khi đếm số lượng KHÁCH HÀNG, LUÔN dùng COUNT(DISTINCT customer_unique_id) thay vì COUNT(customer_id).
+     Lý do: 1 khách hàng (customer_unique_id) có thể có nhiều customer_id qua nhiều đơn.
+     Ví dụ: "Phân bổ khách hàng theo bang" → COUNT(DISTINCT c.customer_unique_id) AS total_customers.
 18. TIMESTAMP DISPLAY RULE:
-    Khi câu hỏi hỏi về "khoảng cách ngày giao", "thời gian giao hàng", "ngày đặt vs ngày giao", và cần hiển thị chi tiết → 
-    LUÔN SELECT thêm cột timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn và thoi_gian_giao_vn bên cạnh cột datediff.
+     Khi câu hỏi hỏi về "khoảng cách ngày giao", "thời gian giao hàng", "ngày đặt vs ngày giao", và cần hiển thị chi tiết → 
+     LUÔN SELECT thêm cột timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn và thoi_gian_giao_vn bên cạnh cột datediff.
+     Khi hiển thị "đơn hàng giao trễ nhất" → LUÔN SELECT thêm order_estimated_delivery_date + INTERVAL 7 HOURS AS ngay_du_kien_vn.
 19. SIMPLICITY RULE:
-    Luôn chọn cách viết SQL đơn giản nhất. Ví dụ:
-    - "Số đơn trung bình mỗi ngày" → ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(col)), 1) thay vì subquery.
-    - "Seller chỉ bán trong năm 2018" → dùng WHERE year(...)=2018 + NOT EXISTS/NOT IN (lọc seller có đơn trước 2018) thay vì GROUP BY + HAVING.
-    - "Khách hàng mới theo tháng" → subquery MIN(order_purchase_timestamp) AS first_purchase, rồi filter year + GROUP BY month.
+     Luôn chọn cách viết SQL đơn giản nhất. Ví dụ:
+     - "Số đơn trung bình mỗi ngày" → ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(col)), 1) thay vì subquery.
+     - "Seller chỉ bán trong năm 2018" → dùng WHERE year(...)=2018 + NOT EXISTS/NOT IN (lọc seller có đơn trước 2018) thay vì GROUP BY + HAVING.
+     - "Khách hàng mới theo tháng" → subquery MIN(order_purchase_timestamp) AS first_purchase, rồi filter year + GROUP BY month.
 20. CATEGORY DISPLAY RULE:
-    Khi hiển thị danh mục sản phẩm, LUÔN hiển thị cả tên tiếng Bồ Đào Nha (product_category_name) lẫn tiếng Anh (product_category_name_english). Chỉ dùng alias AS category_english khi JOIN từ bảng khác (olist_products). Nếu query trực tiếp từ product_category_name_translation → giữ nguyên tên gốc.
+     - Khi GROUP BY / phân tích theo danh mục: chỉ SELECT t.product_category_name_english AS category (1 cột duy nhất).
+     - Khi "liệt kê tất cả danh mục" hoặc query trực tiếp product_category_name_translation: giữ cả 2 cột gốc.
+     - KHÔNG SELECT cả product_category_name LẪN product_category_name_english khi đang GROUP BY.
 
-21. PRE-FLIGHT CHECKLIST (bắt buộc tự kiểm trước khi xuất SQL):
-    Trước khi trả SQL cuối cùng, tự rà 4 điểm sau:
-    a) LIMIT đúng intent: tránh trả 27/50/100/20 nếu câu hỏi không yêu cầu con số lớn hoặc không có ngụ ý gom nhóm toàn bộ. Bám sát ý người dùng.
-    b) BÁM SÁT INTENT - KHÔNG THÊM CỘT THỪA: KHÔNG tự ý thêm `total_orders`, `total_value`, `product_category_name` nếu câu hỏi KHÔNG nhắc đến.
-    c) Alias canonical quan trọng phải đúng:
-       avg_wait_days, avg_freight, total_freight, total_value, yr, qtr, cancel_rate, product_count, new_customers, category.
-    d) Đảm bảo dùng đúng các hàm tổng hợp theo logic business (khách hàng thì COUNT DISTINCT).
+21. CONTEXT ENRICHMENT RULE (khi NÊN thêm cột):
+     Mặc dù Rule 12 cấm thêm cột thừa, có một số trường hợp NÊN thêm cột bổ sung:
+     a) SELLER queries: Khi SELECT seller_id, LUÔN kèm s.seller_city, s.seller_state (JOIN olist_sellers).
+     b) CUSTOMER queries: Khi SELECT customer_unique_id trong top/ranking, LUÔN kèm c.customer_city, c.customer_state.
+     c) TỶ LỆ / PHẦN TRĂM queries: Khi tính tỷ lệ/phần trăm (%), LUÔN trả cả tử số và mẫu số:
+        - "Tỷ lệ giao trễ" → SELECT late_deliveries, total_delivered, late_percentage
+        - "Tỷ lệ đánh giá tích cực" → SELECT positive_reviews, total_reviews, positive_pct
+        - "Tỷ lệ khách mua trả góp" → SELECT installment_payments, total_payments, installment_percentage
+        - "Tỷ lệ đơn hủy" → SELECT total_orders, canceled_orders, cancel_rate
+     d) MIN/MAX queries: Khi hỏi min + max → luôn thêm AVG cùng metric.
+     e) "Đơn hàng giao trễ nhất" → SELECT thêm cột order_estimated_delivery_date (ngay_du_kien_vn).
+     f) "Thời điểm mới nhất" / "hệ thống có hoạt động không" (realtime) → LUÔN kèm COUNT today.
+
+22. WINDOW FUNCTION RULE:
+     Khi câu hỏi chứa từ khóa "xếp hạng" / "rank" / "ranking" → dùng RANK() OVER ().
+     Khi câu hỏi chứa "tích lũy" / "cumulative" / "running total" → dùng SUM() OVER (ORDER BY ... ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW).
+     Khi câu hỏi chứa "xếp hạng trong từng [nhóm]" → dùng RANK() OVER (PARTITION BY [nhóm] ORDER BY [metric] DESC).
+     KHÔNG thay thế RANK() bằng ORDER BY + total_orders.
+
+23. COUNT DISTINCT ORDER_ID RULE:
+     Khi COUNT order_id mà JOIN với olist_order_items (1 đơn có nhiều items), BẮT BUỘC dùng COUNT(DISTINCT o.order_id).
+     Tương tự khi JOIN với olist_order_payments (1 đơn có thể nhiều payment records).
+
+24. SELLER ORDER COUNT RULE:
+     Khi hỏi "người bán có nhiều đơn hàng nhất" → NÊN JOIN olist_orders và filter WHERE o.order_status = 'delivered'
+     vì ta muốn đếm đơn hàng thành công, không phải tất cả.
+
+25. PRE-FLIGHT CHECKLIST (bắt buộc tự kiểm trước khi xuất SQL):
+     Trước khi trả SQL cuối cùng, tự rà 6 điểm sau:
+     a) LIMIT đúng intent: tránh trả 27/50/100 nếu câu hỏi có ngụ ý ranking/top → ưu tiên LIMIT 10.
+     b) ZERO EXTRA COLUMNS: Rà lại danh sách cột SELECT — có cột nào trong blacklist (Rule 12) mà câu hỏi KHÔNG nhắc đến không? Nếu có → XÓA.
+     c) CONTEXT COLUMNS: Rà Rule 21 — seller/customer cần city/state? Tỷ lệ cần raw counts?
+     d) Alias canonical đúng: category (KHÔNG category_english), avg_score, yr, qtr, monetary, avg_wait_days.
+     e) COUNT DISTINCT: order_id khi JOIN items/payments? customer_unique_id khi đếm khách?
+     f) WINDOW FUNCTION: Câu hỏi có "xếp hạng/tích lũy" không? Nếu có → phải dùng RANK()/SUM() OVER.
 
 === TIMEZONE HELPER EXPRESSIONS (copy chính xác — chỉ áp dụng cho REALTIME) ===
     -- Ngày hôm nay (giờ VN):
@@ -395,7 +441,7 @@ ORDER BY max_item_price_brl DESC
 LIMIT 5
 
 Question: Top 10 danh mục sản phẩm có doanh thu cao nhất?
-SELECT t.product_category_name_english AS category, SUM(oi.price) AS revenue
+SELECT t.product_category_name_english AS category, ROUND(SUM(oi.price), 2) AS revenue
 FROM olist_order_items oi
 JOIN olist_products p ON oi.product_id = p.product_id
 JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name
@@ -419,7 +465,8 @@ FROM olist_order_reviews r
 JOIN olist_orders o ON r.order_id = o.order_id
 JOIN olist_customers c ON o.customer_id = c.customer_id
 GROUP BY c.customer_state
-LIMIT 27
+ORDER BY avg_score DESC
+LIMIT 30
 
 Question: Tỷ lệ giao hàng trễ?
 SELECT
@@ -429,7 +476,7 @@ SELECT
 FROM olist_orders o
 WHERE o.order_status = 'delivered'
   AND o.order_delivered_customer_date IS NOT NULL
-LIMIT 1
+LIMIT 10
 
 Question: Phương thức thanh toán nào phổ biến nhất?
 SELECT p.payment_type, COUNT(*) AS total_transactions, ROUND(SUM(p.payment_value), 2) AS total_value
@@ -453,11 +500,12 @@ JOIN olist_customers c ON o.customer_id = c.customer_id
 WHERE o.order_status = 'delivered'
   AND o.order_delivered_customer_date IS NOT NULL
 GROUP BY c.customer_state
-LIMIT 27
+ORDER BY avg_delivery_days DESC
+LIMIT 30
 
 Question: Người bán nào có doanh thu cao nhất?
 SELECT oi.seller_id, s.seller_city, s.seller_state,
-  ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT oi.order_id) AS total_orders
+  ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT o.order_id) AS total_orders
 FROM olist_order_items oi
 JOIN olist_sellers s ON oi.seller_id = s.seller_id
 JOIN olist_orders o ON oi.order_id = o.order_id
@@ -580,7 +628,7 @@ LIMIT 30
 
 Question: Doanh thu theo từng quý?
 SELECT year(o.order_purchase_timestamp) AS yr, quarter(o.order_purchase_timestamp) AS qtr,
-  ROUND(SUM(oi.price), 2) AS quarterly_revenue, COUNT(DISTINCT o.order_id) AS total_orders
+  ROUND(SUM(oi.price), 2) AS quarterly_revenue
 FROM olist_order_items oi
 JOIN olist_orders o ON oi.order_id = o.order_id
 WHERE o.order_status = 'delivered'
