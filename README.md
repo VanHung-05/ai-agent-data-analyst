@@ -160,7 +160,7 @@ docker compose up --build
 ```
 
 ### Truy cập
-- Frontend: `http://localhost:80`
+- Frontend React: `http://127.0.0.1:3000`
 - Backend: `http://localhost:8000`
 - API docs: `http://localhost:8000/docs`
 

@@ -27,7 +27,8 @@ TV5 là **DevOps Engineer + QA Tester + Tech Writer**, chịu trách nhiệm:
 ```bash
 # ✅ Công việc: Thiết lập Git & cấu trúc dự án
 - Khởi tạo kho Git với .gitignore
-- Tạo cấu trúc thư mục (backend/, frontend/, data/, docs/)
+- Tạo cấu trúc thư mục (backend/, frontend-react/, data/, docs/)  
+  Ghi chú: `frontend/` (Streamlit cũ) đã được loại bỏ khỏi nhánh hiện tại.
 - Viết template Dockerfile cho backend & frontend
 - Tạo framework docker-compose.yml
 
@@ -77,10 +78,10 @@ cd backend
 docker build -t ai-analyst-backend:latest .
 docker run -p 8000:8000 --env-file ../.env ai-analyst-backend
 
-# Xây dựng frontend
-cd ../frontend
-docker build -t ai-analyst-frontend:latest .
-docker run -p 8501:8501 ai-analyst-frontend
+# Xây dựng frontend React
+cd ../frontend-react
+docker build -t ai-analyst-frontend-react:latest .
+docker run -p 3000:80 ai-analyst-frontend-react
 
 # Kiểm tra
 curl http://localhost:8000/api/v1/health
@@ -108,7 +109,7 @@ docker-compose up -d
 sleep 30
 docker-compose ps
 curl http://localhost:8000/api/v1/health
-curl http://localhost:8501  # Nên tải được
+curl http://127.0.0.1:3000  # Nên tải được
 ```
 
 ### Tuần 2: Kiểm Thử & Tài Liệu
@@ -382,7 +383,7 @@ curl -X POST http://localhost:8000/api/v1/chat/query \
 ```bash
 # Kiểm thử luồng công việc hoàn chỉnh
 1. Bắt đầu docker-compose
-2. Truy cập giao diện trước (http://localhost:8501)
+2. Truy cập giao diện React trước (http://127.0.0.1:3000)
 3. Nhập truy vấn mẫu
 4. Xác minh tạo SQL
 5. Xác minh hiển thị kết quả
@@ -510,7 +511,7 @@ docker-compose up -d
 
 # Nhật ký
 docker-compose logs -f backend
-docker-compose logs -f frontend
+docker-compose logs -f frontend-react
 
 # Dừng
 docker-compose down

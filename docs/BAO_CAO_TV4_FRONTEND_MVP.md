@@ -505,19 +505,19 @@ Kịch bản lỗi:          5/5  ✅ XỬ LÝ
 ### 🎁 Deliverables cho TV5
 
 **Source Code:**
-- Thư mục `frontend/` với tất cả file Python
-- `frontend/requirements.txt` cho quản lý phụ thuộc
+- Legacy: thư mục `frontend/` (Streamlit cũ) đã được loại bỏ khỏi nhánh hiện tại
+- Frontend hiện tại: `frontend-react/` (React + Vite)
 
 **Tài liệu:**
-- `frontend/SETUP_GUIDE.md` - Hướng dẫn cài đặt
+- `SETUP_GUIDE.md` (root) - Hướng dẫn cài đặt hiện tại
 - `docs/TV4_PLAYBOOK_FRONTEND.md` - Chi tiết kiến trúc
 - File báo cáo này
 
 **Checklist Triển khai:**
 - [ ] Cài Python 3.10+
 - [ ] Tạo venv: `python -m venv .venv`
-- [ ] Cài deps: `pip install -r frontend/requirements.txt`
-- [ ] Test: `streamlit run frontend/app.py`
+- [ ] Cài deps frontend: `cd frontend-react && npm install`
+- [ ] Test frontend: `cd frontend-react && npm run dev`
 - [ ] Dockerize (nếu cần)
 
 **Lưu ý:**

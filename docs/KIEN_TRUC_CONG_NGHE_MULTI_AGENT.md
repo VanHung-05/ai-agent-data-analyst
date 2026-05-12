@@ -214,9 +214,9 @@ Frontend nhận event và cập nhật tiến trình realtime trong khung trạn
 
 ---
 
-## 7) Thiết kế Frontend (Streamlit)
+## 7) Thiết kế Frontend (React)
 
-**File chính:** `frontend/app.py`
+**File chính:** `frontend-react/src/App.tsx`
 
 ### Tính năng chính
 - Chat UI: user bên phải, assistant bên trái.
@@ -259,7 +259,7 @@ Frontend nhận event và cập nhật tiến trình realtime trong khung trạn
 
 ### Local (2 terminal)
 1. Chạy backend (`uvicorn main:app --reload --port 8000`)
-2. Chạy frontend (`streamlit run app.py` hoặc `.venv/bin/python -m streamlit run app.py`)
+2. Chạy frontend (`cd frontend-react && npm install && npm run dev`)
 
 ### Docker
 - `docker-compose up --build`
@@ -288,8 +288,8 @@ Frontend nhận event và cập nhật tiến trình realtime trong khung trạn
 - `backend/services/nlg_agent.py`
 - `backend/services/query_result_parser.py`
 - `backend/services/llm_service.py`
-- `frontend/app.py`
-- `frontend/components/chat.py`
-- `frontend/components/charts.py`
-- `frontend/components/result_table.py`
+- `frontend-react/src/App.tsx`
+- `frontend-react/src/components/chat/ChatWindow.tsx`
+- `frontend-react/src/components/charts/DynamicChart.tsx`
+- `frontend-react/src/components/shared/DataTable.tsx`
 

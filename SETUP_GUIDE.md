@@ -133,7 +133,7 @@ docker-compose up --build
 |---|---|
 | Backend API | http://localhost:8000 |
 | Backend Docs | http://localhost:8000/docs |
-| Frontend UI | http://localhost:80 |
+| Frontend React UI | http://127.0.0.1:3000 |
 
 Dừng:
 

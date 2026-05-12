@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import type { ChatSession } from '../../store/chatStore';
+import { API_BASE_URL } from '../../api/config';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -51,8 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, onNewChat }) => {
   const [modelName, setModelName] = useState<string>('Đang tải...');
 
   useEffect(() => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-    fetch(`${baseUrl}/health`)
+    fetch(`${API_BASE_URL}/health`)
       .then((res) => res.json())
       .then((data) => {
         if (data.model) {

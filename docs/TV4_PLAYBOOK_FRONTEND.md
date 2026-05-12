@@ -11,7 +11,7 @@ Cập nhật lần cuối: 07/04/2026
 
 | Bước | Nội dung công việc | Trạng thái | Bắt đầu | Hoàn thành | Ghi chú Evidence |
 |------|------------------|-----------|---------|-----------|-----------------|
-| 1 | Khởi tạo Streamlit project structure | Done | 07/04/2026 | 07/04/2026 | frontend/app.py + components/ |
+| 1 | Khởi tạo Streamlit project structure | Done | 07/04/2026 | 07/04/2026 | legacy (frontend cũ đã bỏ) |
 | 2 | Xây dựng Chat UI component | Done | 07/04/2026 | 07/04/2026 | components/chat.py hoàn thành |
 | 3 | Xây dựng Result Table component | Done | 07/04/2026 | 07/04/2026 | components/result_table.py hoàn thành |
 | 4 | Xây dựng Chart Visualization component | Done | 07/04/2026 | 07/04/2026 | components/charts.py với Plotly |
@@ -411,7 +411,7 @@ st.progress(0.5)
 
 ```bash
 git clone <repo-url>
-cd frontend
+cd frontend-react
 ```
 
 **Bước 2: Tạo virtual environment**
@@ -432,13 +432,13 @@ pip install -r requirements.txt
 ### 6.2 Chạy Frontend Server
 
 ```bash
-streamlit run app.py
+npm run dev
 ```
 
 **Output:**
 ```
-You can now view your Streamlit app in your browser.
-Local URL: http://localhost:8501
+VITE ready.
+Local: http://localhost:5173
 ```
 
 ### 6.3 Chạy Both Backend + Frontend
@@ -452,13 +452,13 @@ uvicorn main:app --reload --port 8000
 
 **Terminal 2 (Frontend):**
 ```bash
-cd frontend
+cd frontend-react
 source .venv/bin/activate
-streamlit run app.py
+npm run dev
 ```
 
 Truy cập:
-- Frontend: http://localhost:8501
+- Frontend React: http://127.0.0.1:3000
 - Backend API: http://localhost:8000/api/v1
 - Backend Docs: http://localhost:8000/docs
 
@@ -545,18 +545,18 @@ uvicorn main:app --reload
 **Cause:** Chạy từ folder sai
 **Solution:** 
 ```bash
-cd frontend
-streamlit run app.py  # NOT: streamlit run frontend/app.py
+cd frontend-react
+npm run dev  # frontend hiện tại dùng React/Vite
 ```
 
 ### Issue 3: "Matplotlib figures cannot be pickled"
 **Cause:** Plotly chart rendering issue
 **Solution:** Use `use_container_width=True` và `height` parameter
 
-### Issue 4: Port 8501 already in use
+### Issue 4: Frontend port already in use
 **Solution:** 
 ```bash
-streamlit run app.py --server.port 8502
+npm run dev -- --port 5174
 ```
 
 ---
@@ -587,7 +587,7 @@ streamlit run app.py --server.port 8502
 
 Frontend (TV4) đã hoàn thành MVP với:
 
-✅ **Streamlit Application** - Clean, modern interface
+✅ **React Application** - Clean, modern interface
 ✅ **Chat Interface** - User-friendly message history
 ✅ **Data Display** - Interactive tables with export
 ✅ **Visualizations** - Auto-generated charts (Plotly)
@@ -602,7 +602,7 @@ Frontend (TV4) đã hoàn thành MVP với:
 ## 📞 Support & Questions
 
 Nếu cần hỗ trợ:
-1. Check SETUP_GUIDE.md trong frontend/
+1. Check SETUP_GUIDE.md ở root và README trong frontend-react/
 2. Xem logs: Streamlit console output
 3. Debug Backend connection: Check health status in Settings
 4. Ask TV3 (Backend) hoặc TV2 (AI) nếu vấn đề nằm ở backend
