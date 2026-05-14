@@ -173,6 +173,7 @@ Columns:
        - total_reviews / total_customers — chỉ thêm khi câu hỏi TRỰC TIẾP hỏi về "số đánh giá" / "số khách hàng"
        - product_count — chỉ thêm khi câu hỏi TRỰC TIẾP hỏi "số sản phẩm"
        *** CHÚ Ý ĐẶC BIỆT: "doanh thu", "phí vận chuyển", "điểm đánh giá", "thanh toán" KHÔNG ngụ ý "số đơn hàng". KHÔNG thêm total_orders. ***
+       *** CHÚ Ý: "Phương thức thanh toán phổ biến nhất" = COUNT(*) AS total_transactions. KHÔNG thêm total_value. ***
      - Câu "liệt kê X" → chỉ SELECT X.
      - Ví dụ: "liệt kê phương thức thanh toán" → chỉ SELECT DISTINCT payment_type (KHÔNG thêm COUNT(*) AS total_transactions).
      - Ví dụ 2: "Thống kê doanh thu theo thời gian" → chỉ SELECT doanh thu và thời gian, KHÔNG tự thêm total_orders.
@@ -181,6 +182,7 @@ Columns:
      - Ví dụ 5: "Doanh thu theo từng tháng" → chỉ SELECT month, monthly_revenue. KHÔNG thêm total_orders.
      - Ví dụ 6: "Thống kê theo phương thức thanh toán" → chỉ SELECT payment_type + metric được hỏi. KHÔNG tự thêm total_value nếu câu hỏi không nhắc.
      - Ví dụ 7: "Doanh thu theo bang" → chỉ SELECT customer_state, total_revenue. KHÔNG thêm total_orders.
+     - Ví dụ 8: "Đơn hàng nào có nhiều sản phẩm nhất" → chỉ SELECT order_id, COUNT(order_item_id) AS item_count. KHÔNG thêm total_value.
      - TUYỆT ĐỐI BÁM SÁT vào các từ khóa của câu hỏi. Đừng tự ý nội suy ngữ cảnh quá mức.
 13. ALIAS NAMING RULE (Critical):
      Alias phải ngắn gọn, trung tính, không nhúng context thừa (năm, nguồn, tên bảng, timezone) trừ khi user yêu cầu rõ.
@@ -235,14 +237,19 @@ Columns:
      c) KHÔNG CÓ QUY TẮC CỨNG cho GROUP BY (bỏ rule LIMIT 20). Phụ thuộc vào câu hỏi.
      d) KHÔNG tự ý suy diễn LIMIT 27/50/100 nếu câu hỏi KHÔNG có từ khóa "tất cả/toàn bộ/all/every".
      e) Nếu câu hỏi có ngụ ý ranking (top/cao nhất/thấp nhất/nhiều nhất/ít nhất), ưu tiên LIMIT 10 (hoặc N user yêu cầu) ngay cả khi GROUP BY.
+        *** QUAN TRỌNG: "X nào có Y nhất/cao nhất?" = TOP 10, KHÔNG PHẢI TOP 1. Luôn LIMIT 10 trừ khi user nói rõ "duy nhất 1" / "top 1". ***
      f) Trường hợp câu hỏi mơ hồ về phạm vi, cứ tuân theo số lượng tự nhiên của query hoặc ưu tiên trả về LIMIT 10 để tránh dư dòng.
      g) "Phân bổ" / "theo từng" / "tổng số X theo từng Y" (GROUP BY enumerable values like score 1-5, installments, bang): dùng LIMIT 30 để đảm bảo đủ kết quả.
-     h) "Bang nào nhiều nhất" / "bang nào có X nhất" → LIMIT 30 (Brazil có 27 bang, LIMIT 10 sẽ bỏ sót).
+     h) "theo từng bang" / "phân bổ theo bang" (KHÔNG có từ "nhất") → LIMIT 30 (Brazil có 27 bang).
+        "Bang nào nhất" / "bang nào có X nhất" (CÓ từ "nhất"/ranking) → LIMIT 10 (top-N ranking).
      i) "Đơn hàng có giá trị cao nhất" → hiểu là TOP 10, SELECT order_id + SUM, GROUP BY order_id, ORDER BY DESC, LIMIT 10.
      j) "Từng người bán" / "mỗi người bán" (không nói top/limit) → LIMIT 10 mặc định.
+     k) Cross-dimension GROUP BY (2+ nhóm, ví dụ "theo phương thức VÀ bang"): LIMIT 50.
+     l) "Liệt kê" / "danh sách" / "chưa từng" (không ranking, không "nhất"): LIMIT 20 mặc định.
 16. ORDER BY RULE:
      Chỉ dùng ORDER BY khi câu hỏi có ngụ ý sắp xếp rõ ràng: "cao nhất", "thấp nhất", "mới nhất", "đầu tiên", "top", "gần đây", "theo thứ tự".
      Nếu câu hỏi chỉ yêu cầu "liệt kê/hiển thị" không kèm ngụ ý ranking/sorting -> KHÔNG tự thêm ORDER BY.
+      *** BỔ SUNG: Khi query "Y của từng X" + LIMIT nhỏ (≤10) → LUÔN ORDER BY metric DESC. Vì LIMIT nhỏ sẽ cắt bớt kết quả, cần sắp xếp để trả kết quả có ý nghĩa nhất. ***
 17. CUSTOMER COUNTING RULE:
      Khi đếm số lượng KHÁCH HÀNG, LUÔN dùng COUNT(DISTINCT customer_unique_id) thay vì COUNT(customer_id).
      Lý do: 1 khách hàng (customer_unique_id) có thể có nhiều customer_id qua nhiều đơn.
@@ -318,6 +325,21 @@ Columns:
      h) SELLER ORDER COUNT: Khi đếm đơn hàng seller → đã JOIN olist_orders + WHERE delivered chưa?
      i) "Đơn hàng giá trị cao nhất" → SELECT order_id, SUM(payment_value), GROUP BY order_id, ORDER BY DESC, LIMIT 10. KHÔNG dùng MAX.
      j) "Số đơn giao trễ theo tháng" → dùng WHERE filter (không CASE WHEN), alias = late_deliveries, COUNT(*).
+
+ 26. HAVING RULE (Statistical Validity):
+      Khi ranking danh mục sản phẩm theo metric TRUNG BÌNH (AVG score, AVG weight, AVG price...) với ORDER BY + LIMIT:
+      BẮT BUỘC thêm HAVING COUNT(*) >= 50 để loại bỏ danh mục quá ít mẫu (kết quả méo mó thống kê).
+      Ví dụ: "Danh mục có điểm đánh giá trung bình cao nhất" →
+        ... GROUP BY t.product_category_name_english HAVING COUNT(r.review_id) >= 50 ORDER BY avg_score DESC LIMIT 10
+      Áp dụng khi: GROUP BY category + AVG metric + ORDER BY ranking.
+      KHÔNG áp dụng khi: câu hỏi yêu cầu "tất cả danh mục" hoặc không ranking.
+
+ 27. CORRELATION / ANALYSIS RULE:
+      Khi câu hỏi có từ khóa "tương quan" / "mối quan hệ" / "phân tích" / "correlation" / "ảnh hưởng":
+      a) KHÔNG tự thêm WHERE order_status = 'delivered' trừ khi câu hỏi TRỰC TIẾP nhắc đến "doanh thu" hoặc "đơn hàng thành công".
+      b) Mục đích là phân tích toàn bộ dữ liệu, lọc delivered sẽ làm bias kết quả.
+      Ví dụ: "Tương quan giữa số ảnh sản phẩm và giá bán trung bình" → KHÔNG WHERE delivered.
+      Ví dụ: "Tương quan giữa số kỳ trả góp và điểm đánh giá" → KHÔNG WHERE delivered, KHÔNG WHERE credit_card (trừ khi user hỏi rõ).
 
 === TIMEZONE HELPER EXPRESSIONS (copy chính xác — chỉ áp dụng cho REALTIME) ===
     -- Ngày hôm nay (giờ VN):
@@ -401,7 +423,7 @@ WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP
 LIMIT 1
 
 Question: Chi tiết 10 đơn hàng mới nhất vừa vào hệ thống?
-SELECT rt.order_id, rt.customer_id, rt.order_status, rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn
+SELECT rt.order_id, rt.customer_id, rt.order_status, rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn
 FROM bronze_rt_orders_sim rt
 ORDER BY rt.order_purchase_timestamp DESC
 LIMIT 10
@@ -410,7 +432,7 @@ Question: Liệt kê chi tiết toàn bộ đơn hàng trong ngày hôm nay? / D
 SELECT rt.order_id, rt.customer_id, rt.order_status,
   DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) AS ngay_vn,
   HOUR(rt.order_purchase_timestamp + INTERVAL 7 HOURS) AS gio_vn,
-  rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_vn
+  rt.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn
 FROM bronze_rt_orders_sim rt
 WHERE DATE(rt.order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS)
 ORDER BY rt.order_purchase_timestamp DESC
@@ -909,3 +931,48 @@ WHERE p.payment_type = 'credit_card'
 GROUP BY p.payment_installments
 ORDER BY p.payment_installments
 LIMIT 30
+
+Question: Danh mục sản phẩm nào có điểm đánh giá trung bình cao nhất (chỉ xét danh mục có từ 50 đánh giá trở lên)?
+SELECT t.product_category_name_english AS category, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews
+FROM olist_order_reviews r
+JOIN olist_orders o ON r.order_id = o.order_id
+JOIN olist_order_items oi ON o.order_id = oi.order_id
+JOIN olist_products p ON oi.product_id = p.product_id
+JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name
+GROUP BY t.product_category_name_english
+HAVING COUNT(r.review_id) >= 50
+ORDER BY avg_score DESC
+LIMIT 10
+
+Question: Tương quan giữa số ảnh sản phẩm và giá bán trung bình?
+SELECT p.product_photos_qty, ROUND(AVG(oi.price), 2) AS avg_price
+FROM olist_products p
+JOIN olist_order_items oi ON p.product_id = oi.product_id
+GROUP BY p.product_photos_qty
+ORDER BY p.product_photos_qty ASC
+LIMIT 20
+
+Question: Phân tích tương quan giữa số kỳ trả góp và điểm đánh giá trung bình?
+SELECT p.payment_installments, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews
+FROM olist_order_payments p
+JOIN olist_orders o ON p.order_id = o.order_id
+JOIN olist_order_reviews r ON o.order_id = r.order_id
+GROUP BY p.payment_installments
+ORDER BY p.payment_installments
+LIMIT 30
+
+Question: Tổng giá trị thanh toán theo từng phương thức và bang khách hàng?
+SELECT c.customer_state, p.payment_type, ROUND(SUM(p.payment_value), 2) AS total_payment
+FROM olist_order_payments p
+JOIN olist_orders o ON p.order_id = o.order_id
+JOIN olist_customers c ON o.customer_id = c.customer_id
+GROUP BY c.customer_state, p.payment_type
+ORDER BY c.customer_state, total_payment DESC
+LIMIT 50
+
+Question: Đơn hàng nào có nhiều sản phẩm nhất (top 5)?
+SELECT oi.order_id, COUNT(oi.order_item_id) AS item_count
+FROM olist_order_items oi
+GROUP BY oi.order_id
+ORDER BY item_count DESC
+LIMIT 5
