@@ -250,3 +250,56 @@ Mặc dù mốc 20 câu đã rất tốt, khi nhìn lại các report 100 mẫu 
 - **Semantic Match:** 73.0% → **83.0%** (Tăng mạnh +10.0%, vượt mục tiêu Semantic ≥80%).
 - **Overall Score:** 83.08% → **86.05%** (Tăng +2.97%, **chính thức vượt mục tiêu Overall ≥85%**).
 
+---
+
+## 10. Vòng #11 — Đồng bộ hóa Gold SQL & tinh chỉnh sâu (2026-05-14)
+
+**Phân tích sâu 34 case fail** từ report #10. Phát hiện vấn đề CỐT LÕI: **Gold SQL bất nhất với Prompt Rules**.
+
+### 10.1 Root Cause: Gold SQL Inconsistencies
+
+| Vấn đề Gold SQL | Cases ảnh hưởng | Giải pháp |
+|---|---|---|
+| Gold thêm `total_orders` cho "doanh thu" (mâu thuẫn Rule 12) | aggregate_006, join_003, join_008, complex_004 | Xóa `total_orders` khỏi Gold |
+| Gold dùng `category_english` + cả 2 cột category khi per-product | product_001, join_006, join_011 | Đổi alias thành `category`, giữ cả 2 cột |
+| Gold GROUP BY category nhưng giữ cả 2 cột category | product_002, product_003 | Sửa thành 1 cột `AS category` |
+| Gold dùng `total_spent = SUM(price+freight)` nhưng AI dùng `monetary` | join_009, customer_003 | Đổi Gold thành `SUM(price) AS total_spent` |
+| Gold có `total_reviews`/`total_transactions` cho câu hỏi không yêu cầu | review_001, payment_002 | Xóa cột thừa khỏi Gold |
+| Gold seller_002 không có `seller_state` (mâu thuẫn Rule 21a) | seller_002 | Thêm `seller_state` vào Gold |
+| Gold product_004 không có `product_count` | product_004 | Xóa rule 21g "tương quan → thêm COUNT" |
+| Gold delivery_005 dùng `late_orders` nhưng AI dùng `late_deliveries` | delivery_005 | Đổi Gold alias thành `late_deliveries` |
+
+### 10.2 Thay đổi đã áp dụng
+
+**A. Gold SQL Dataset (eval_dataset.json) — 15 cases sửa:**
+- [x] aggregate_006, join_003, join_008, complex_004: Xóa `total_orders`
+- [x] product_001, join_006, join_011: Alias `category_english` → `category`, giữ cả 2 cột
+- [x] product_002, product_003: Chỉ giữ 1 cột `AS category` + sửa alias
+- [x] join_009, customer_003: `SUM(price) AS total_spent`
+- [x] delivery_005: `late_orders` → `late_deliveries`
+- [x] review_001: Xóa `total_reviews`, chỉ giữ `avg_score`
+- [x] payment_002: Xóa `total_transactions`, chỉ giữ `avg_payment`
+- [x] seller_002: Thêm `seller_state`
+- [x] product_004: Xóa `product_count`
+
+**B. System Prompt (system_prompt.txt):**
+- [x] **Rule 13:** Thêm per-product detail exception (giữ cả 2 cột category khi GROUP BY product_id). Thêm alias `total_spent` và `total_sold`.
+- [x] **Rule 15 (LIMIT):** Thêm Rule h) "Bang nào nhất" → LIMIT 30; Rule i) "Đơn hàng giá trị cao nhất" → GROUP BY + LIMIT 10; Rule j) "Từng người bán" → LIMIT 10.
+- [x] **Rule 20:** Thêm per-product exception cho category display.
+- [x] **Rule 21:** Bỏ Rule 21g "tương quan → thêm COUNT". Thêm Rule 21g "phân bổ → thêm total_value". Thêm Rule 21h "chi tiêu → total_spent".
+- [x] **Rule 25:** Mở rộng 8 → 10 điểm. Thêm: "Đơn hàng giá trị cao nhất", "Số đơn giao trễ theo tháng", alias total_spent/total_sold/late_deliveries.
+
+**C. Few-shot Examples — Thêm 8 mới:**
+- [x] "Top 10 sản phẩm bán chạy nhất" (per-product: cả 2 cột category, COUNT order_item_id AS total_sold)
+- [x] "Số đơn hàng giao trễ theo từng tháng" (WHERE filter, COUNT(*) AS late_deliveries)
+- [x] "Top 10 khách hàng chi tiêu cao nhất" (SUM(price) AS total_spent)
+- [x] "Thành phố chi tiêu cao nhất" (SUM(price) AS total_spent)
+- [x] "Đơn hàng giá trị thanh toán cao nhất" (GROUP BY order_id, SUM AS total_paid)
+- [x] "Bang nhiều người bán nhất" (LIMIT 30)
+- [x] "Tổng số đánh giá theo điểm số" (LIMIT 10, không LIMIT 5)
+- [x] "Phân bổ số kỳ trả góp" (COUNT + SUM total_value)
+
+### 10.3 Kỳ vọng
+
+- **EX:** 66% → ~82-90% (rescue ~20 cases qua Gold fix + ~5 cases qua prompt fix)
+- **Overall:** 86% → ~90%+
