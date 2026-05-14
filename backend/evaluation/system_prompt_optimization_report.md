@@ -158,10 +158,3 @@ Bổ sung thêm **8 chuỗi SQL Vàng hoàn hảo mới**, nâng tổng số ví
 6. *Bang nào có nhiều người bán nhất* (thể hiện sử dụng `LIMIT 30`).
 7. *Tổng số đánh giá theo từng điểm số* (thể hiện sử dụng `LIMIT 10` thay vì nội suy sai thành 5).
 8. *Phân bổ số kỳ trả góp* (thể hiện việc kèm đủ số lượng và tổng giá trị thanh toán).
-
----
-
-## PHẦN 6: KỲ VỌNG BỨT PHÁ CHỈ SỐ (VÒNG #12)
-Việc đồng bộ hóa hai chiều (chuẩn hóa tệp Gold SQL gốc và mài giũa LLM Prompt) đã giải quyết tận gốc rễ sự bất nhất của dữ liệu huấn luyện/kiểm thử. 
-- **Execution Success Rate (EX):** Dự kiến bứt phá mạnh mẽ từ **66.0%** lên phạm vi **85.0% - 90.0%+** (Giải cứu thành công khoảng 15 cases do lỗi Gold SQL và 5-7 cases nhờ các mẫu Few-shot mới).
-- **Overall Weighted Score:** Trực tiếp củng cố vững chắc ở mốc **≥ 90.0%**, hoàn thành xuất sắc mục tiêu chất lượng truy vấn cấp độ chuyên gia của toàn bộ dự án.
