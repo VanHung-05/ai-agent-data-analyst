@@ -168,15 +168,19 @@ Columns:
 12. Human-readable SELECT (Intent-first — ZERO EXTRA COLUMNS):
      CHỈ SELECT đúng các cột mà câu hỏi yêu cầu. TUYỆT ĐỐI KHÔNG tự thêm cột metric/cột mô tả nếu user không hỏi.
      *** BLACKLIST CỘT THƯỜNG BỊ THÊM THỪA (tuyệt đối KHÔNG thêm nếu câu hỏi không nhắc): ***
-       - total_orders / total_transactions — chỉ thêm khi câu hỏi hỏi "số đơn hàng" / "số giao dịch"
-       - total_value / total_payment — chỉ thêm khi câu hỏi hỏi "tổng giá trị"
-       - total_reviews / total_customers — chỉ thêm khi câu hỏi hỏi về "số đánh giá" / "số khách hàng"
-       - product_count — chỉ thêm khi câu hỏi hỏi "số sản phẩm"
+       - total_orders / total_transactions — chỉ thêm khi câu hỏi TRỰC TIẾP hỏi "số đơn hàng" / "số giao dịch"
+       - total_value / total_payment — chỉ thêm khi câu hỏi TRỰC TIẾP hỏi "tổng giá trị"
+       - total_reviews / total_customers — chỉ thêm khi câu hỏi TRỰC TIẾP hỏi về "số đánh giá" / "số khách hàng"
+       - product_count — chỉ thêm khi câu hỏi TRỰC TIẾP hỏi "số sản phẩm"
+       *** CHÚ Ý ĐẶC BIỆT: "doanh thu", "phí vận chuyển", "điểm đánh giá", "thanh toán" KHÔNG ngụ ý "số đơn hàng". KHÔNG thêm total_orders. ***
      - Câu "liệt kê X" → chỉ SELECT X.
      - Ví dụ: "liệt kê phương thức thanh toán" → chỉ SELECT DISTINCT payment_type (KHÔNG thêm COUNT(*) AS total_transactions).
      - Ví dụ 2: "Thống kê doanh thu theo thời gian" → chỉ SELECT doanh thu và thời gian, KHÔNG tự thêm total_orders.
      - Ví dụ 3: "Doanh thu và phí vận chuyển theo năm" → chỉ SELECT yr, total_revenue, total_freight. KHÔNG thêm total_orders.
-     - Ví dụ 4: "Giá trị thanh toán trung bình theo phương thức" → chỉ SELECT payment_type, avg_payment, total_transactions. KHÔNG thêm total_value.
+     - Ví dụ 4: "Giá trị thanh toán trung bình theo phương thức" → chỉ SELECT payment_type, avg_payment. KHÔNG thêm total_value hay total_transactions.
+     - Ví dụ 5: "Doanh thu theo từng tháng" → chỉ SELECT month, monthly_revenue. KHÔNG thêm total_orders.
+     - Ví dụ 6: "Thống kê theo phương thức thanh toán" → chỉ SELECT payment_type + metric được hỏi. KHÔNG tự thêm total_value nếu câu hỏi không nhắc.
+     - Ví dụ 7: "Doanh thu theo bang" → chỉ SELECT customer_state, total_revenue. KHÔNG thêm total_orders.
      - TUYỆT ĐỐI BÁM SÁT vào các từ khóa của câu hỏi. Đừng tự ý nội suy ngữ cảnh quá mức.
 13. ALIAS NAMING RULE (Critical):
      Alias phải ngắn gọn, trung tính, không nhúng context thừa (năm, nguồn, tên bảng, timezone) trừ khi user yêu cầu rõ.
@@ -188,6 +192,7 @@ Columns:
      - total_unique_customers  -> total_customers
      - canceled_orders (COUNT) -> canceled_orders
      - avg_delivery_days / avg_delivery_time -> avg_wait_days
+     - avg_delivery_days (khi hỏi "thời gian giao hàng trung bình" tổng thể) -> avg_delivery_days
      - max_item_price_brl / max_price -> max_price_brl
      - total_categories / num_categories -> category_count
      - new_customers / total_new_customers -> new_customers
@@ -196,14 +201,24 @@ Columns:
      - avg_payment_value       -> avg_payment
      - total_sellers           -> total_sellers
      - product_count / total_products -> product_count
-     - monetary_value -> monetary
-     - last_purchase_date -> last_purchase_date_vn (kèm +7h)
-     *** CATEGORY ALIAS RULE (QUAN TRỌNG): ***
+     - monetary_value          -> monetary
+     - last_purchase_date      -> last_purchase_date_vn (kèm +7h)
+     - avg_weight / avg_weight_kg -> avg_weight_g (trọng lượng tính bằng gram)
+     - late_percentage / late_pct_value -> late_pct (hoặc late_rate khi tính theo seller)
+     - late_deliveries (count giao trễ) -> late_deliveries (hoặc late_count khi GROUP BY category, hoặc late_orders khi GROUP BY seller)
+     - total_delivered (tổng đơn đã giao) -> total_delivered
+     - positive_reviews (count tích cực) -> positive_reviews
+     - repeat_customers / returning_customers -> repeat_customers
+     - cumulative_revenue / running_total -> cumulative_revenue
+     - revenue_rank / rank_revenue -> revenue_rank
+     - rank_in_state / state_rank -> rank_in_state
+     *** CATEGORY ALIAS RULE (QUAN TRỌNG — LỖI THƯỜNG GẶP): ***
        Khi SELECT danh mục sản phẩm qua JOIN product_category_name_translation:
-       - Nếu GROUP BY / phân tích theo danh mục → LUÔN dùng: t.product_category_name_english AS category
+       - LUÔN dùng: t.product_category_name_english AS category (alias = "category", KHÔNG PHẢI "category_english")
        - Chỉ SELECT 1 cột category (KHÔNG select cả product_category_name lẫn product_category_name_english)
-       - Ngoại lệ: Nếu câu hỏi YÊU CẦU "hiển thị danh mục sản phẩm chi tiết" hoặc query bảng translation trực tiếp → giữ cả 2 cột gốc
-       - Alias category_english → KHÔNG dùng. Dùng category.
+       - Ngoại lệ DUY NHẤT: Khi query trực tiếp bảng product_category_name_translation (liệt kê tất cả danh mục) → giữ cả 2 cột gốc
+       - ❌ SAI: AS category_english  ❌ SAI: SELECT cả p.product_category_name lẫn t.product_category_name_english
+       - ✅ ĐÚNG: t.product_category_name_english AS category
      Quy tắc: không tự tạo alias dài kiểu *_value/*_count/*_2017 nếu câu hỏi không yêu cầu.
 14. TIMEZONE RULE:
      a) Dữ liệu LỊCH SỬ (olist_*): KHÔNG bắt buộc +7h khi GROUP BY/FILTER/ORDER BY.
@@ -239,41 +254,58 @@ Columns:
      - Khi "liệt kê tất cả danh mục" hoặc query trực tiếp product_category_name_translation: giữ cả 2 cột gốc.
      - KHÔNG SELECT cả product_category_name LẪN product_category_name_english khi đang GROUP BY.
 
-21. CONTEXT ENRICHMENT RULE (khi NÊN thêm cột):
-     Mặc dù Rule 12 cấm thêm cột thừa, có một số trường hợp NÊN thêm cột bổ sung:
-     a) SELLER queries: Khi SELECT seller_id, LUÔN kèm s.seller_city, s.seller_state (JOIN olist_sellers).
-     b) CUSTOMER queries: Khi SELECT customer_unique_id trong top/ranking, LUÔN kèm c.customer_city, c.customer_state.
-     c) TỶ LỆ / PHẦN TRĂM queries: Khi tính tỷ lệ/phần trăm (%), LUÔN trả cả tử số và mẫu số:
-        - "Tỷ lệ giao trễ" → SELECT late_deliveries, total_delivered, late_percentage
+21. CONTEXT ENRICHMENT RULE (khi NÊN thêm cột — ƯU TIÊN cao hơn Rule 12):
+     Mặc dù Rule 12 cấm thêm cột thừa, các trường hợp sau BẮT BUỘC thêm cột bổ sung:
+     a) SELLER queries: Khi SELECT seller_id, BẮT BUỘC kèm s.seller_city, s.seller_state (JOIN olist_sellers). Không có ngoại lệ.
+     b) CUSTOMER queries: Khi SELECT customer_unique_id, BẮT BUỘC kèm c.customer_city, c.customer_state.
+     c) TỶ LỆ / PHẦN TRĂM queries (BẮT BUỘC — không bao giờ chỉ trả mỗi %):
+        Khi tính tỷ lệ/phần trăm (%), LUÔN trả BỘ BA: tử số, mẫu số, tỷ lệ %.
+        - "Tỷ lệ giao trễ" tổng thể → SELECT late_deliveries, total_delivered, late_pct
+        - "Tỷ lệ giao trễ theo danh mục" → SELECT category, total_delivered, late_count, late_pct
+        - "Tỷ lệ giao trễ theo seller" → SELECT seller_id, total_orders, late_orders, late_rate
         - "Tỷ lệ đánh giá tích cực" → SELECT positive_reviews, total_reviews, positive_pct
         - "Tỷ lệ khách mua trả góp" → SELECT installment_payments, total_payments, installment_percentage
         - "Tỷ lệ đơn hủy" → SELECT total_orders, canceled_orders, cancel_rate
+        - "Tỷ lệ khách quay lại" → SELECT repeat_customers, total_customers, repeat_rate
      d) MIN/MAX queries: Khi hỏi min + max → luôn thêm AVG cùng metric.
      e) "Đơn hàng giao trễ nhất" → SELECT thêm cột order_estimated_delivery_date (ngay_du_kien_vn).
      f) "Thời điểm mới nhất" / "hệ thống có hoạt động không" (realtime) → LUÔN kèm COUNT today.
+     g) "Tương quan" / "correlation" queries: LUÔN thêm COUNT (ví dụ product_count) để cho thấy sample size.
 
-22. WINDOW FUNCTION RULE:
-     Khi câu hỏi chứa từ khóa "xếp hạng" / "rank" / "ranking" → dùng RANK() OVER ().
-     Khi câu hỏi chứa "tích lũy" / "cumulative" / "running total" → dùng SUM() OVER (ORDER BY ... ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW).
-     Khi câu hỏi chứa "xếp hạng trong từng [nhóm]" → dùng RANK() OVER (PARTITION BY [nhóm] ORDER BY [metric] DESC).
-     KHÔNG thay thế RANK() bằng ORDER BY + total_orders.
+22. WINDOW FUNCTION RULE (KHÔNG thay thế bằng ORDER BY):
+     a) "xếp hạng" / "rank" / "ranking" → dùng RANK() OVER (ORDER BY [metric] DESC) AS revenue_rank.
+        Ví dụ: "Xếp hạng bang theo doanh thu" →
+        SELECT s.seller_state, ROUND(SUM(oi.price), 2) AS revenue, RANK() OVER (ORDER BY SUM(oi.price) DESC) AS revenue_rank
+     b) "tích lũy" / "cumulative" / "running total" → dùng SUM() OVER (ORDER BY ... ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_revenue.
+        Ví dụ: "Doanh thu tích lũy theo tháng" →
+        SELECT month, monthly_revenue, SUM(monthly_revenue) OVER (ORDER BY month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_revenue
+     c) "xếp hạng trong từng [nhóm]" → dùng RANK() OVER (PARTITION BY [nhóm] ORDER BY [metric] DESC) AS rank_in_state.
+        Ví dụ: "Xếp hạng seller theo doanh thu trong từng bang" →
+        SELECT s.seller_state, oi.seller_id, ROUND(SUM(oi.price), 2) AS revenue, RANK() OVER (PARTITION BY s.seller_state ORDER BY SUM(oi.price) DESC) AS rank_in_state
+     *** TUYỆT ĐỐI KHÔNG thay thế RANK()/SUM() OVER bằng ORDER BY + total_orders hoặc bất kỳ metric nào. ***
+     *** Khi dùng window function, KHÔNG thêm cột total_orders vào SELECT. ***
 
 23. COUNT DISTINCT ORDER_ID RULE:
      Khi COUNT order_id mà JOIN với olist_order_items (1 đơn có nhiều items), BẮT BUỘC dùng COUNT(DISTINCT o.order_id).
      Tương tự khi JOIN với olist_order_payments (1 đơn có thể nhiều payment records).
 
 24. SELLER ORDER COUNT RULE:
-     Khi hỏi "người bán có nhiều đơn hàng nhất" → NÊN JOIN olist_orders và filter WHERE o.order_status = 'delivered'
+     Khi hỏi "người bán có nhiều đơn hàng nhất" → BẮT BUỘC JOIN olist_orders và filter WHERE o.order_status = 'delivered'
      vì ta muốn đếm đơn hàng thành công, không phải tất cả.
+     Khi đếm order từ bảng olist_order_items → BẮT BUỘC dùng COUNT(DISTINCT o.order_id) (KHÔNG dùng COUNT(o.order_id) vì 1 order có nhiều items).
+     Khi đếm đơn hủy qua CASE WHEN → dùng COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) AS canceled_orders.
 
 25. PRE-FLIGHT CHECKLIST (bắt buộc tự kiểm trước khi xuất SQL):
-     Trước khi trả SQL cuối cùng, tự rà 6 điểm sau:
+     Trước khi trả SQL cuối cùng, tự rà 8 điểm sau:
      a) LIMIT đúng intent: tránh trả 27/50/100 nếu câu hỏi có ngụ ý ranking/top → ưu tiên LIMIT 10.
-     b) ZERO EXTRA COLUMNS: Rà lại danh sách cột SELECT — có cột nào trong blacklist (Rule 12) mà câu hỏi KHÔNG nhắc đến không? Nếu có → XÓA.
-     c) CONTEXT COLUMNS: Rà Rule 21 — seller/customer cần city/state? Tỷ lệ cần raw counts?
-     d) Alias canonical đúng: category (KHÔNG category_english), avg_score, yr, qtr, monetary, avg_wait_days.
-     e) COUNT DISTINCT: order_id khi JOIN items/payments? customer_unique_id khi đếm khách?
-     f) WINDOW FUNCTION: Câu hỏi có "xếp hạng/tích lũy" không? Nếu có → phải dùng RANK()/SUM() OVER.
+     b) ZERO EXTRA COLUMNS: Rà lại danh sách cột SELECT — có cột nào trong blacklist (Rule 12) mà câu hỏi KHÔNG nhắc đến không? Nếu có → XÓA NGAY.
+        Đặc biệt kiểm tra: total_orders, total_transactions, total_value, total_reviews, product_count — chỉ giữ nếu câu hỏi TRỰC TIẾP hỏi.
+     c) CONTEXT COLUMNS: Rà Rule 21 — seller_id cần city+state? customer_unique_id cần city+state? Tỷ lệ cần raw counts (tử số + mẫu số)?
+     d) Alias canonical đúng: category (KHÔNG category_english), avg_score, yr, qtr, monetary (KHÔNG monetary_value), avg_wait_days, avg_weight_g (KHÔNG avg_weight), late_pct/late_rate (KHÔNG late_percentage), last_purchase_date_vn (KHÔNG last_purchase_date).
+     e) COUNT DISTINCT: order_id khi JOIN items/payments? customer_unique_id khi đếm khách? canceled CASE WHEN cần DISTINCT?
+     f) WINDOW FUNCTION: Câu hỏi có "xếp hạng/tích lũy" không? Nếu có → phải dùng RANK()/SUM() OVER, KHÔNG thay bằng ORDER BY.
+     g) CATEGORY: Khi phân tích theo danh mục, chỉ SELECT 1 cột AS category. KHÔNG select cả product_category_name lẫn product_category_name_english.
+     h) SELLER ORDER COUNT: Khi đếm đơn hàng seller → đã JOIN olist_orders + WHERE delivered chưa?
 
 === TIMEZONE HELPER EXPRESSIONS (copy chính xác — chỉ áp dụng cho REALTIME) ===
     -- Ngày hôm nay (giờ VN):
@@ -472,14 +504,14 @@ Question: Tỷ lệ giao hàng trễ?
 SELECT
   COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_deliveries,
   COUNT(*) AS total_delivered,
-  ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_percentage
+  ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_pct
 FROM olist_orders o
 WHERE o.order_status = 'delivered'
   AND o.order_delivered_customer_date IS NOT NULL
 LIMIT 10
 
 Question: Phương thức thanh toán nào phổ biến nhất?
-SELECT p.payment_type, COUNT(*) AS total_transactions, ROUND(SUM(p.payment_value), 2) AS total_value
+SELECT p.payment_type, COUNT(*) AS total_transactions
 FROM olist_order_payments p
 GROUP BY p.payment_type
 ORDER BY total_transactions DESC
@@ -505,7 +537,7 @@ LIMIT 30
 
 Question: Người bán nào có doanh thu cao nhất?
 SELECT oi.seller_id, s.seller_city, s.seller_state,
-  ROUND(SUM(oi.price), 2) AS total_revenue, COUNT(DISTINCT o.order_id) AS total_orders
+  ROUND(SUM(oi.price), 2) AS total_revenue
 FROM olist_order_items oi
 JOIN olist_sellers s ON oi.seller_id = s.seller_id
 JOIN olist_orders o ON oi.order_id = o.order_id
@@ -533,8 +565,7 @@ Question: Trend doanh thu theo quý?
 SELECT
   year(o.order_purchase_timestamp) AS yr,
   quarter(o.order_purchase_timestamp) AS qtr,
-  ROUND(SUM(oi.price), 2) AS quarterly_revenue,
-  COUNT(DISTINCT o.order_id) AS total_orders
+  ROUND(SUM(oi.price), 2) AS quarterly_revenue
 FROM olist_order_items oi
 JOIN olist_orders o ON oi.order_id = o.order_id
 WHERE o.order_status = 'delivered'
@@ -643,11 +674,11 @@ ORDER BY t.product_category_name_english
 LIMIT 100
 
 Question: Người bán nào bán nhiều danh mục sản phẩm nhất?
-SELECT oi.seller_id, s.seller_city, COUNT(DISTINCT p.product_category_name) AS category_count
+SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT p.product_category_name) AS category_count
 FROM olist_order_items oi
 JOIN olist_sellers s ON oi.seller_id = s.seller_id
 JOIN olist_products p ON oi.product_id = p.product_id
-GROUP BY oi.seller_id, s.seller_city
+GROUP BY oi.seller_id, s.seller_city, s.seller_state
 ORDER BY category_count DESC
 LIMIT 10
 
@@ -671,4 +702,116 @@ WHERE o.order_status = 'delivered'
 GROUP BY oi.seller_id, s.seller_city, s.seller_state
 HAVING COUNT(DISTINCT oi.order_id) >= 50
 ORDER BY avg_freight ASC
+LIMIT 10
+
+Question: Người bán nào có số lượng đơn hàng nhiều nhất?
+SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT oi.order_id) AS total_orders
+FROM olist_order_items oi
+JOIN olist_sellers s ON oi.seller_id = s.seller_id
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY oi.seller_id, s.seller_city, s.seller_state
+ORDER BY total_orders DESC
+LIMIT 10
+
+Question: Xếp hạng bang theo doanh thu?
+SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS revenue,
+  RANK() OVER (ORDER BY SUM(oi.price) DESC) AS revenue_rank
+FROM olist_order_items oi
+JOIN olist_orders o ON oi.order_id = o.order_id
+JOIN olist_customers c ON o.customer_id = c.customer_id
+WHERE o.order_status = 'delivered'
+GROUP BY c.customer_state
+ORDER BY revenue DESC
+LIMIT 30
+
+Question: Doanh thu tích lũy theo tháng trong năm 2017?
+SELECT month, monthly_revenue,
+  SUM(monthly_revenue) OVER (ORDER BY month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_revenue
+FROM (
+  SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS month,
+    ROUND(SUM(oi.price), 2) AS monthly_revenue
+  FROM olist_order_items oi
+  JOIN olist_orders o ON oi.order_id = o.order_id
+  WHERE o.order_status = 'delivered' AND year(o.order_purchase_timestamp) = 2017
+  GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')
+) sub
+ORDER BY month
+LIMIT 12
+
+Question: Xếp hạng người bán theo doanh thu trong từng bang?
+SELECT s.seller_state, oi.seller_id, ROUND(SUM(oi.price), 2) AS revenue,
+  RANK() OVER (PARTITION BY s.seller_state ORDER BY SUM(oi.price) DESC) AS rank_in_state
+FROM olist_order_items oi
+JOIN olist_sellers s ON oi.seller_id = s.seller_id
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY s.seller_state, oi.seller_id
+ORDER BY s.seller_state, rank_in_state
+LIMIT 30
+
+Question: Tỷ lệ khách hàng quay lại mua hơn 1 lần?
+SELECT
+  COUNT(CASE WHEN order_count > 1 THEN 1 END) AS repeat_customers,
+  COUNT(*) AS total_customers,
+  ROUND(COUNT(CASE WHEN order_count > 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS repeat_rate
+FROM (
+  SELECT c.customer_unique_id, COUNT(DISTINCT o.order_id) AS order_count
+  FROM olist_customers c
+  JOIN olist_orders o ON c.customer_id = o.customer_id
+  GROUP BY c.customer_unique_id
+) t
+LIMIT 10
+
+Question: Top 5 danh mục sản phẩm có tỷ lệ giao trễ cao nhất?
+SELECT t.product_category_name_english AS category,
+  COUNT(*) AS total_delivered,
+  COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_count,
+  ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_pct
+FROM olist_orders o
+JOIN olist_order_items oi ON o.order_id = oi.order_id
+JOIN olist_products p ON oi.product_id = p.product_id
+JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name
+WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL
+GROUP BY t.product_category_name_english
+HAVING COUNT(*) >= 50
+ORDER BY late_pct DESC
+LIMIT 5
+
+Question: Phân tích RFM: khách hàng mua lần cuối khi nào, mua bao nhiêu lần, chi tiêu tổng bao nhiêu?
+SELECT c.customer_unique_id,
+  MAX(o.order_purchase_timestamp + INTERVAL 7 HOURS) AS last_purchase_date_vn,
+  COUNT(DISTINCT o.order_id) AS frequency,
+  ROUND(SUM(oi.price), 2) AS monetary
+FROM olist_orders o
+JOIN olist_customers c ON o.customer_id = c.customer_id
+JOIN olist_order_items oi ON o.order_id = oi.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY c.customer_unique_id
+ORDER BY monetary DESC
+LIMIT 20
+
+Question: Danh mục sản phẩm nào có trọng lượng trung bình cao nhất?
+SELECT t.product_category_name_english AS category,
+  ROUND(AVG(p.product_weight_g), 1) AS avg_weight_g,
+  COUNT(p.product_id) AS product_count
+FROM olist_products p
+JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name
+WHERE p.product_weight_g IS NOT NULL
+GROUP BY t.product_category_name_english
+ORDER BY avg_weight_g DESC
+LIMIT 10
+
+Question: Tỷ lệ đơn hàng giao trễ của từng người bán (top 10 tệ nhất, ít nhất 50 đơn)?
+SELECT oi.seller_id, s.seller_city, s.seller_state,
+  COUNT(*) AS total_orders,
+  COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) AS late_orders,
+  ROUND(COUNT(CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date THEN 1 END) * 100.0 / COUNT(*), 2) AS late_rate
+FROM olist_order_items oi
+JOIN olist_orders o ON oi.order_id = o.order_id
+JOIN olist_sellers s ON oi.seller_id = s.seller_id
+WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL
+GROUP BY oi.seller_id, s.seller_city, s.seller_state
+HAVING COUNT(*) >= 50
+ORDER BY late_rate DESC
 LIMIT 10

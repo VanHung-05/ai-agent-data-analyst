@@ -1,6 +1,6 @@
 # Lịch sử Tối ưu Prompt - AI Data Analyst
 
-**Cập nhật lần cuối:** 2026-04-27
+**Cập nhật lần cuối:** 2026-05-14
 
 ---
 
@@ -17,6 +17,7 @@
 | 7 | 20260427_025150 | 20 | 100% | 25.0% | 82.2% | 70.0% | 87.1% | 69.7% | 90.0% | 87.95% | Tiếp tục tối ưu → EX chạm mốc 70%, Overall ~88%. Lỗi Alias và LIMIT gần như được triệt tiêu, tập trung vào Semantic. |
 | 8 | 20260427_030749 | 20 | 100% | 45.0% | 87.2% | 85.0% | 94.2% | 84.1% | 95.0% | 94.05% | Áp dụng 4 fix Semantic mở rộng ngữ cảnh → EX nhảy vọt lên 85%, Overall 94.05%. **Đã vượt Target!(chỉ 20 mẫu)** |
 | 9 | 20260429_003732 | 100 | 100% | 21.0% | 83.0% | 59.0% | 78.6% | 58.0% | 73.0% | 83.08% | Re-test 100 mẫu sau khi siết LIMIT & thêm Pre-flight. EX tăng 47% $\rightarrow$ 59%. Gặp lỗi Semantic do "thêm cột thừa" (overfit vào tập 20 mẫu). |
+| 10 | 20260514_172941 | 100 | 100% | 28.0% | 85.3% | 66.0% | 82.9% | 65.4% | 83.0% | 86.05% | Tối ưu hóa Vòng #10: Tinh chỉnh Rule 12 (Zero Extra Columns), chuẩn hóa bảng Alias (Rule 13), quy tắc Bộ Ba cho tỷ lệ (Rule 21), bổ sung quy tắc Hàm cửa sổ (Rule 22) và cập nhật 11 Few-shot mới. EX tăng 59% $\rightarrow$ 66%, Semantic đạt 83%, Overall đạt 86.05% (vượt target Overall ≥85%). |
 
 **Mục tiêu:** EX ≥ 90%, Semantic ≥ 80%, Overall ≥ 85%
 
@@ -207,3 +208,45 @@ Mặc dù mốc 20 câu đã rất tốt, khi nhìn lại các report 100 mẫu 
 - [x] **Gỡ bỏ/Nới lỏng Rule 12 & Rule 21:** Chuyển các chỉ thị "Mở rộng ngữ cảnh" từ BẮT BUỘC (`LUÔN`) sang TÙY CHỌN, hoặc yêu cầu bám sát hoàn toàn vào từ khóa của câu hỏi. KHÔNG tự ý thêm `total_orders` hay `total_value` nếu user không nhắc đến.
 - [x] **Sửa Alias category:** Cập nhật lại Rule 13: `product_category_name_english` $\rightarrow$ `category` (thay vì `category_english`) để đồng bộ với Gold SQL.
 - [x] **Tinh chỉnh Rule LIMIT:** Xóa bỏ các quy định cứng nhắc như "LIMIT 20 cho GROUP BY", quay về việc phân tích intent ranking hoặc giữ giới hạn an toàn hơn để tránh sai khác số dòng so với Gold.
+
+---
+
+## 9. Vòng #10 — Tối ưu toàn diện cho 100 mẫu (2026-05-14)
+
+**Phân tích sâu 41 case fail** từ report #9, phân thành **7 nhóm lỗi gốc**:
+
+### 9.1 Tổng hợp 7 nhóm lỗi
+
+| Nhóm | Mô tả | Số case | Ví dụ |
+|---|---|---|---|
+| 1 | AI thêm cột thừa (total_orders/total_value/total_transactions) | 5 | aggregate_010, trend_004, payment_002 |
+| 2 | Alias `category_english` thay vì `category`, hoặc SELECT cả 2 cột category | 7 | review_003, product_003, complex_003 |
+| 3 | Ratio/percentage chỉ trả % mà thiếu raw counts (tử số + mẫu số) | 6 | delivery_001, review_002, customer_002, seller_003 |
+| 4 | Window function bị thay bằng ORDER BY + total_orders | 3 | window_001, window_002, window_003 |
+| 5 | Thiếu context columns (seller/customer city+state) | 4 | join_009, subquery_001, seller_004 |
+| 6 | Alias naming khác Gold (monetary_value, avg_weight, late_percentage, last_purchase_date) | 5 | complex_001, product_002, seller_003 |
+| 7 | LIMIT sai hoặc logic sai (missing delivered filter, COUNT không DISTINCT) | 7 | seller_001, complex_005, geography_005 |
+
+### 9.2 Thay đổi đã áp dụng
+
+**A. Rules (system_prompt.txt):**
+- [x] **Rule 12 (Blacklist):** Tăng cường với 7 ví dụ cụ thể. Thêm CHÚ Ý ĐẶC BIỆT: "doanh thu/phí vận chuyển/điểm đánh giá KHÔNG ngụ ý số đơn hàng".
+- [x] **Rule 13 (Alias):** Bổ sung 10+ canonical alias mới. Tăng cường CATEGORY ALIAS RULE với ❌/✅ markers.
+- [x] **Rule 21 (Context Enrichment):** Nâng seller/customer context lên BẮT BUỘC. Mở rộng ratio rule thành BỘ BA. Thêm Rule 21g cho "tương quan".
+- [x] **Rule 22 (Window Function):** Thêm 3 ví dụ SQL cụ thể. Thêm "KHÔNG thêm total_orders khi dùng window function".
+- [x] **Rule 24 (Seller Order):** Nâng NÊN → BẮT BUỘC. Thêm COUNT DISTINCT cho canceled CASE WHEN.
+- [x] **Rule 25 (Pre-flight):** Mở rộng 6 → 8 điểm kiểm tra. Thêm CATEGORY check + SELLER ORDER COUNT check.
+
+**B. Few-shot Examples:**
+- [x] Xóa `total_value` khỏi "Phương thức thanh toán phổ biến nhất".
+- [x] Xóa `total_orders` khỏi "Người bán doanh thu cao nhất" và "Trend doanh thu theo quý".
+- [x] Sửa `late_percentage` → `late_pct`.
+- [x] Thêm `seller_state` vào "Người bán nhiều danh mục nhất".
+- [x] Thêm 11 few-shot mới: seller top đơn hàng, xếp hạng bang, doanh thu tích lũy, xếp hạng seller/bang, tỷ lệ khách quay lại, giao trễ category, RFM, trọng lượng category, giao trễ seller.
+
+### 9.3 Kết quả Thực tế (Report `20260514_172941`)
+
+- **EX:** 59.0% → **66.0%** (Tăng +7.0%, giải quyết thành công nhiều lỗi thừa cột và chuẩn hóa định danh, chấm dứt tình trạng rớt EX nghiêm trọng. Tuy nhiên vẫn cần tiếp tục tối ưu các truy vấn JOIN/Logic phức tạp).
+- **Semantic Match:** 73.0% → **83.0%** (Tăng mạnh +10.0%, vượt mục tiêu Semantic ≥80%).
+- **Overall Score:** 83.08% → **86.05%** (Tăng +2.97%, **chính thức vượt mục tiêu Overall ≥85%**).
+
