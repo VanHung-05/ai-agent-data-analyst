@@ -46,73 +46,13 @@
 
 ### Tổng quan
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Frontend (React 19)                      │
-│  ┌──────────┐  ┌───────────┐  ┌────────────┐  ┌─────────────┐  │
-│  │ ChatInput│  │MessageList│  │DynamicChart│  │  DataTable   │  │
-│  └────┬─────┘  └───────────┘  └────────────┘  └─────────────┘  │
-│       │              ▲               ▲               ▲          │
-│       │              └───────────────┴───────────────┘          │
-│       │                    Zustand Store                        │
-│       ▼                    (auto-persist)                       │
-│  SSE Stream ─────────────────────────────────────────────────── │
-└───────┬─────────────────────────────────────────────────────────┘
-        │ HTTP POST /api/v1/chat/query/stream
-        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Backend (FastAPI)                            │
-│                                                                 │
-│  ┌──────────────── Agent Orchestrator (LangGraph) ────────────┐ │
-│  │                                                             │ │
-│  │  ┌─────────┐    ┌────────────────┐    ┌─────────────────┐  │ │
-│  │  │ Router  │───▶│ Conversation   │    │   SQL Pipeline   │  │ │
-│  │  │ Agent   │    │ Agent          │    │                   │  │ │
-│  │  └─────────┘    └────────────────┘    │ Generate SQL      │  │ │
-│  │       │                                │ Validate/Sanitize │  │ │
-│  │       └───────────────────────────────▶│ Execute Databricks│  │ │
-│  │                                        │ Visualize Agent   │  │ │
-│  │                                        │ NLG Agent         │  │ │
-│  │                                        └─────────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────┘ │
-│                              │                                   │
-└──────────────────────────────┼───────────────────────────────────┘
-                               ▼
-                ┌──────────────────────────┐
-                │  Databricks SQL Warehouse │
-                │  (Olist E-Commerce Data)  │
-                └──────────────────────────┘
-```
+<img width="2816" height="1536" alt="Gemini_Generated_Image_9e6wjj9e6wjj9e6w" src="https://github.com/user-attachments/assets/50b901c1-f59a-4f15-a709-6b0a6d446b2b" />
+
 
 ### Multi-Agent Pipeline
 
-```
-User Question
-     │
-     ▼
- ┌─────────┐
- │ Router  │──── conversation ────▶ Conversation Agent ──▶ Response
- │ Agent   │
- └────┬────┘
-      │ sql / visualize
-      ▼
- Generate SQL (LLM + System Prompt)
-      │
-      ▼
- Validate & Sanitize (sql_validator)
-      │
-      ▼
- Execute on Databricks SQL Warehouse
-      │
-      ▼
- Visualize Agent (chart recommendation)
-      │
-      ▼
- NLG Agent (natural language answer)
-      │
-      ▼
- JSON Response + SSE Progress Events
-```
+<img width="2816" height="1536" alt="pipeline" src="https://github.com/user-attachments/assets/5c644446-2b67-4381-8256-7cad3ed59734" />
+
 
 ### Các Agent
 
