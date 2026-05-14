@@ -67,8 +67,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onToggle, onNewChat }) => {
       });
   }, []);
 
-  // Sắp xếp mới nhất lên đầu
-  const sorted = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+  // Sắp xếp mới nhất lên đầu (theo thời gian tạo, không đổi thứ tự khi click)
+  const sorted = [...sessions].sort((a, b) => b.createdAt - a.createdAt);
   const groups = groupByDate(sorted);
 
   const handleLoad = (sessionId: string) => {

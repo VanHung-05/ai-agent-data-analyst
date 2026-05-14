@@ -56,6 +56,34 @@ function makeTitle(messages: Message[]): string {
   return text.length > 50 ? text.substring(0, 50) + '…' : text;
 }
 
+/**
+ * Helper: Đồng bộ phiên hiện tại vào danh sách sessions.
+ * Gọi sau mỗi lần messages thay đổi để tự động lưu.
+ */
+function _syncCurrentSession(
+  currentSessionId: string,
+  messages: Message[],
+  sessions: ChatSession[],
+): ChatSession[] {
+  if (messages.length === 0) return sessions;
+
+  const now = Date.now();
+  const existingIdx = sessions.findIndex((s) => s.id === currentSessionId);
+
+  const updatedSession: ChatSession = {
+    id: currentSessionId,
+    title: makeTitle(messages),
+    messages,
+    createdAt: existingIdx >= 0 ? sessions[existingIdx].createdAt : now,
+    updatedAt: now,
+  };
+
+  if (existingIdx >= 0) {
+    return sessions.map((s, i) => (i === existingIdx ? updatedSession : s));
+  }
+  return [updatedSession, ...sessions];
+}
+
 export const useChatStore = create<ChatStore>()(
   persist(
     (set, get) => ({
@@ -67,19 +95,35 @@ export const useChatStore = create<ChatStore>()(
 
       /* ── Messages ── */
       addMessage: (message) =>
-        set((state) => ({
-          messages: [
+        set((state) => {
+          const newMessages = [
             ...state.messages,
             { ...message, id: generateId(), timestamp: Date.now() },
-          ],
-        })),
+          ];
+          return {
+            messages: newMessages,
+            sessions: _syncCurrentSession(
+              state.currentSessionId,
+              newMessages,
+              state.sessions,
+            ),
+          };
+        }),
 
       updateMessage: (id, updates) =>
-        set((state) => ({
-          messages: state.messages.map((msg) =>
+        set((state) => {
+          const newMessages = state.messages.map((msg) =>
             msg.id === id ? { ...msg, ...updates } : msg
-          ),
-        })),
+          );
+          return {
+            messages: newMessages,
+            sessions: _syncCurrentSession(
+              state.currentSessionId,
+              newMessages,
+              state.sessions,
+            ),
+          };
+        }),
 
       removeMessage: (id) =>
         set((state) => ({
@@ -88,99 +132,27 @@ export const useChatStore = create<ChatStore>()(
 
       /* ── Sessions ── */
       startNewSession: () => {
-        const state = get();
-        const now = Date.now();
-
-        // Chỉ lưu nếu phiên hiện tại có ít nhất 1 tin nhắn
-        if (state.messages.length > 0) {
-          const existingIdx = state.sessions.findIndex(
-            (s) => s.id === state.currentSessionId
-          );
-
-          const updatedSession: ChatSession = {
-            id: state.currentSessionId,
-            title: makeTitle(state.messages),
-            messages: state.messages,
-            createdAt:
-              existingIdx >= 0
-                ? state.sessions[existingIdx].createdAt
-                : now,
-            updatedAt: now,
-          };
-
-          // Nếu chưa có trong list thì thêm vào đầu, nếu có rồi thì update
-          const newSessions =
-            existingIdx >= 0
-              ? state.sessions.map((s, i) =>
-                  i === existingIdx ? updatedSession : s
-                )
-              : [updatedSession, ...state.sessions];
-
-          set({
-            sessions: newSessions,
-            currentSessionId: generateId(),
-            messages: [],
-            error: null,
-            isLoading: false,
-          });
-        } else {
-          // Không có gì để lưu, chỉ reset ID
-          set({
-            currentSessionId: generateId(),
-            messages: [],
-            error: null,
-            isLoading: false,
-          });
-        }
+        // Sessions đã được auto-sync, chỉ cần tạo phiên mới
+        set({
+          currentSessionId: generateId(),
+          messages: [],
+          error: null,
+          isLoading: false,
+        });
       },
 
       loadSession: (sessionId) => {
         const state = get();
 
-        // Lưu phiên hiện tại trước nếu có nội dung
-        if (state.messages.length > 0) {
-          const now = Date.now();
-          const existingIdx = state.sessions.findIndex(
-            (s) => s.id === state.currentSessionId
-          );
-          const updatedSession: ChatSession = {
-            id: state.currentSessionId,
-            title: makeTitle(state.messages),
-            messages: state.messages,
-            createdAt:
-              existingIdx >= 0
-                ? state.sessions[existingIdx].createdAt
-                : now,
-            updatedAt: now,
-          };
-          // Nếu chưa có trong list thì thêm vào đầu, nếu có rồi thì update
-          const savedSessions =
-            existingIdx >= 0
-              ? state.sessions.map((s, i) =>
-                  i === existingIdx ? updatedSession : s
-                )
-              : [updatedSession, ...state.sessions];
-
-          // Load session được chọn
-          const target = savedSessions.find((s) => s.id === sessionId);
-          if (!target) return;
-          set({
-            sessions: savedSessions,
-            currentSessionId: sessionId,
-            messages: target.messages,
-            error: null,
-            isLoading: false,
-          });
-        } else {
-          const target = state.sessions.find((s) => s.id === sessionId);
-          if (!target) return;
-          set({
-            currentSessionId: sessionId,
-            messages: target.messages,
-            error: null,
-            isLoading: false,
-          });
-        }
+        // Phiên hiện tại đã được auto-sync, chỉ cần load phiên được chọn
+        const target = state.sessions.find((s) => s.id === sessionId);
+        if (!target) return;
+        set({
+          currentSessionId: sessionId,
+          messages: target.messages,
+          error: null,
+          isLoading: false,
+        });
       },
 
       deleteSession: (sessionId) => {
@@ -213,8 +185,10 @@ export const useChatStore = create<ChatStore>()(
     }),
     {
       name: 'ai-analyst-chat',          // localStorage key
-      partialize: (state) => ({         // Chỉ persist sessions, không persist isLoading
+      partialize: (state) => ({         // Persist sessions + phiên hiện tại
         sessions: state.sessions,
+        currentSessionId: state.currentSessionId,
+        messages: state.messages,
       }),
     }
   )

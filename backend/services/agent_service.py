@@ -238,8 +238,8 @@ async def _node_conversation(state: WorkflowState) -> WorkflowState:
     await _emit_progress(progress_hook, "conversation", "...")
     message = await _run_in_executor(conversation_response, question, None, llm)
     result["answer"] = message
-    result["data"] = [{"assistant_response": message}]
-    result["row_count"] = 1
+    result["data"] = []
+    result["row_count"] = 0
     result["visualization_recommendation"] = {
         "chart_type": "conversation",
         "reason": "Routed to Conversation Agent",
@@ -429,8 +429,8 @@ async def process_question(
             "routing_method": "policy_block",
             "block_reason": "natural_language_write_request",
         }
-        result["data"] = [{"policy": "read_only", "detail": result["routing_info"]["block_reason"]}]
-        result["row_count"] = 1
+        result["data"] = []
+        result["row_count"] = 0
         result["visualization_recommendation"] = {
             "chart_type": "conversation",
             "reason": "Blocked: data modification request (read-only policy)",
