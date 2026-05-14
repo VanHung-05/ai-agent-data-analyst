@@ -326,19 +326,6 @@ ai-agent-data-analyst/
 
 ---
 
-
-## 📚 Tài liệu liên quan
-
-| Tài liệu | Đường dẫn |
-|---|---|
-| Kiến trúc Multi-Agent | [`docs/KIEN_TRUC_CONG_NGHE_MULTI_AGENT.md`](docs/KIEN_TRUC_CONG_NGHE_MULTI_AGENT.md) |
-| API Documentation | [`docs/api_docs.md`](docs/api_docs.md) |
-| Setup Guide | [`SETUP_GUIDE.md`](SETUP_GUIDE.md) |
-| Evaluation README | [`backend/evaluation/README.md`](backend/evaluation/README.md) |
-| Prompt Optimization Log | [`backend/evaluation/prompt_fix_log.md`](backend/evaluation/prompt_fix_log.md) |
-
----
-
 <p align="center">
   <sub>Built with ❤️ using LangChain + Databricks + React</sub>
 </p>
