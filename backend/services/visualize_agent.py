@@ -63,6 +63,21 @@ def recommend_chart(
     sql_lower = sql.lower()
     x_col, y_col = _choose_axes(data, columns)
 
+    # === Không vẽ chart khi x-axis là UUID/hash và không có cột thay thế ===
+    if x_col and _is_id_column(x_col, data):
+        # Thử tìm cột khác làm x-axis thay thế
+        alt_x = _find_non_id_x(data, columns, x_col)
+        if alt_x:
+            x_col = alt_x
+        else:
+            return {
+                "chart_type": "table",
+                "x": None,
+                "y": None,
+                "title": None,
+                "reason": f"x-axis '{x_col}' is an ID/hash column — chart would be unreadable",
+            }
+
     # === Ưu tiên: không vẽ khi dữ liệu không đủ ý nghĩa cho chart ===
     if len(columns) <= 1:
         return {
@@ -122,7 +137,19 @@ def recommend_chart(
                 spec["reason"] = "Proportions/ratio with multiple categories"
                 return spec
 
-    if any(kw in q for kw in ["top", "so sánh", "ranking", "xếp hạng", "comparison"]):
+    # === Câu hỏi tìm cực trị ("nhất") → bảng đủ, không cần chart ===
+    # Ví dụ: "cao nhất", "nhiều nhất", "lớn nhất", "thấp nhất"...
+    # Ngoại lệ: user đã chỉ định chart type ở trên (forced_chart) hoặc có "top N so sánh"
+    if _is_superlative_question(q):
+        return {
+            "chart_type": "table",
+            "x": None,
+            "y": None,
+            "title": None,
+            "reason": "Superlative question (nhất/most/least) — table + NLG answer is sufficient",
+        }
+
+    if any(kw in q for kw in ["top", "so sánh", "ranking", "xếp hạng", "comparison", "liệt kê"]):
         if len(columns) >= 2:
             spec = _build_chart_spec("bar", question, x_col, y_col)
             ok, _why = _validate_chart_for_data(
@@ -132,16 +159,7 @@ def recommend_chart(
                 spec["reason"] = "Comparison/ranking detected"
                 return spec
 
-    # group by thuần → bar (nhưng chỉ khi không phải pie)
-    if "group by" in sql_lower:
-        if len(columns) >= 2:
-            spec = _build_chart_spec("bar", question, x_col, y_col)
-            ok, _why = _validate_chart_for_data(
-                "bar", data, columns, spec.get("x"), spec.get("y")
-            )
-            if ok:
-                spec["reason"] = "Grouped aggregation detected"
-                return spec
+    # group by + time → line đã bắt ở trên, không fallback bar cho mọi GROUP BY
 
     # === LLM: xử lý case mơ hồ mà heuristic không match ===
     if llm is not None:
@@ -310,6 +328,57 @@ def _is_numeric_like(value: Any) -> bool:
     return False
 
 
+def _is_id_column(col_name: str, data: list[dict]) -> bool:
+    """
+    Phát hiện cột ID/UUID không phù hợp để làm trục x biểu đồ.
+    Trả về True nếu:
+    - Tên cột chứa '_id' và không phải cột phân tích có ý nghĩa
+    - Hơn 60% giá trị trông như UUID/MD5 hex hash (32 ký tự hex)
+    """
+    import re as _re
+    _ID_COL_NAMES = {
+        "seller_id", "customer_id", "customer_unique_id", "order_id",
+        "product_id", "review_id", "geolocation_zip_code_prefix",
+    }
+    if col_name.lower() in _ID_COL_NAMES:
+        return True
+
+    # Kiểm tra giá trị có phải hex hash 32 ký tự (MD5-like UUID)
+    _UUID_RE = _re.compile(r'^[a-f0-9]{32}$')
+    vals = [str(row.get(col_name, "")).strip() for row in data if row.get(col_name) is not None]
+    if not vals:
+        return False
+    uuid_count = sum(1 for v in vals if _UUID_RE.match(v))
+    return uuid_count / len(vals) >= 0.6
+
+
+
+
+def _is_superlative_question(question_lower: str) -> bool:
+    """
+    Phát hiện câu hỏi tìm cực trị ("nhất") không cần vẽ biểu đồ.
+    Ví dụ: "cao nhất", "nhiều nhất", "lớn nhất", "thấp nhất", "highest", "most"...
+    Ngoại lệ: nếu câu có từ khoá so sánh nhiều đối tượng thì vẫn chart.
+    """
+    vi_superlatives = [
+        "nhất", "cao nhất", "thấp nhất", "nhiều nhất", "ít nhất",
+        "lớn nhất", "nhỏ nhất", "nhanh nhất", "chậm nhất",
+        "tốt nhất", "kém nhất", "đắt nhất", "rẻ nhất",
+        "dài nhất", "ngắn nhất", "nặng nhất", "nhẹ nhất",
+    ]
+    en_superlatives = [
+        "highest", "lowest", "most", "least", "greatest",
+        "smallest", "largest", "fastest", "slowest", "best", "worst",
+        "maximum", "minimum", "max", "min",
+    ]
+    # Từ khoá so sánh → vẫn cần chart (ngoại lệ)
+    comparison_kws = ["so sánh", "xếp hạng", "ranking", "top", "comparison", "liệt kê"]
+
+    has_superlative = any(kw in question_lower for kw in vi_superlatives + en_superlatives)
+    has_comparison = any(kw in question_lower for kw in comparison_kws)
+    return has_superlative and not has_comparison
+
+
 def _choose_axes(data: list[dict], columns: list[str]) -> tuple[str | None, str | None]:
     if not columns:
         return None, None
@@ -325,7 +394,13 @@ def _choose_axes(data: list[dict], columns: list[str]) -> tuple[str | None, str 
             numeric_cols.append(col)
 
     non_numeric_cols = [c for c in columns if c not in numeric_cols]
+    # Ưu tiên cột không phải ID làm x-axis
+    non_id_non_numeric = [c for c in non_numeric_cols if not _is_id_column(c, data)]
 
+    x_candidates = non_id_non_numeric if non_id_non_numeric else non_numeric_cols
+
+    if x_candidates and numeric_cols:
+        return x_candidates[0], numeric_cols[0]
     if non_numeric_cols and numeric_cols:
         return non_numeric_cols[0], numeric_cols[0]
     if len(numeric_cols) >= 2:
@@ -333,6 +408,24 @@ def _choose_axes(data: list[dict], columns: list[str]) -> tuple[str | None, str 
     if len(columns) >= 2:
         return columns[0], columns[1]
     return columns[0], columns[0]
+
+
+def _find_non_id_x(data: list[dict], columns: list[str], current_x: str) -> str | None:
+    """Tìm cột non-numeric, non-ID thay thế x-axis khi x hiện tại là ID."""
+    numeric_cols = set()
+    for col in columns:
+        vals = [row.get(col) for row in data if row.get(col) is not None]
+        if vals and sum(1 for v in vals if _is_numeric_like(v)) / len(vals) >= 0.7:
+            numeric_cols.add(col)
+
+    for col in columns:
+        if col == current_x:
+            continue
+        if col in numeric_cols:
+            continue
+        if not _is_id_column(col, data):
+            return col
+    return None
 
 
 def _suggest_title(question: str, chart_type: str) -> str:

@@ -216,6 +216,10 @@ Columns:
      - rank_in_state / state_rank -> rank_in_state
      - total_spent / total_spending -> total_spent (CHI TIÊU = SUM(price), KHÔNG dùng alias monetary/total_revenue cho chi tiêu)
      - total_sold / items_sold -> total_sold (đếm order_item_id, KHÔNG dùng total_orders cho "bán chạy")
+     - approved_within_1d / fast_approved_orders -> fast_approved (đơn duyệt ≤ 1 ngày)
+     - fast_approval_rate / approval_rate_1d -> fast_approval_rate
+     - delivery_days / days_to_deliver (1 đơn cụ thể) -> delivery_days
+     - avg_wait_days / avg_delivery_per_state (GROUP BY bang/tháng) -> avg_wait_days
      *** CATEGORY ALIAS RULE (QUAN TRỌNG — LỖI THƯỜNG GẶP): ***
        Khi SELECT danh mục sản phẩm qua JOIN product_category_name_translation:
        a) GROUP BY theo danh mục (phân tích theo category): LUÔN dùng t.product_category_name_english AS category. Chỉ SELECT 1 cột.
@@ -233,16 +237,18 @@ Columns:
      c) Realtime queries không filter date và không SELECT timestamp: +7h không cần thiết.
 15. LIMIT RULE:
      a) Query COUNT/SUM/AVG trả đúng 1 dòng: dùng LIMIT 10.
-     b) Top-N / "cao nhất" / "thấp nhất" / "đầu tiên" / "mới nhất": LIMIT = N (hoặc mặc định 10 nếu không có N).
+     b) Top-N / "cao nhất" / "thấp nhất" / "đầu tiên" / "mới nhất":
+        - Nếu user nói "top N" → LIMIT = N.
+        - Nếu user chỉ hỏi "X nào có Y nhất/cao nhất/nhiều nhất?" (KHÔNG có "top") → LIMIT 1 (chỉ trả 1 kết quả tốt nhất).
      c) KHÔNG CÓ QUY TẮC CỨNG cho GROUP BY (bỏ rule LIMIT 20). Phụ thuộc vào câu hỏi.
      d) KHÔNG tự ý suy diễn LIMIT 27/50/100 nếu câu hỏi KHÔNG có từ khóa "tất cả/toàn bộ/all/every".
-     e) Nếu câu hỏi có ngụ ý ranking (top/cao nhất/thấp nhất/nhiều nhất/ít nhất), ưu tiên LIMIT 10 (hoặc N user yêu cầu) ngay cả khi GROUP BY.
-        *** QUAN TRỌNG: "X nào có Y nhất/cao nhất?" = TOP 10, KHÔNG PHẢI TOP 1. Luôn LIMIT 10 trừ khi user nói rõ "duy nhất 1" / "top 1". ***
+     e) Nếu câu hỏi có "top" + ranking → LIMIT = N (mặc định 10).
+        *** QUAN TRỌNG: "X nào có Y nhất?" (không nói top) = LIMIT 1. "Top 10 X có Y nhất" = LIMIT 10. ***
      f) Trường hợp câu hỏi mơ hồ về phạm vi, cứ tuân theo số lượng tự nhiên của query hoặc ưu tiên trả về LIMIT 10 để tránh dư dòng.
      g) "Phân bổ" / "theo từng" / "tổng số X theo từng Y" (GROUP BY enumerable values like score 1-5, installments, bang): dùng LIMIT 30 để đảm bảo đủ kết quả.
      h) "theo từng bang" / "phân bổ theo bang" (KHÔNG có từ "nhất") → LIMIT 30 (Brazil có 27 bang).
-        "Bang nào nhất" / "bang nào có X nhất" (CÓ từ "nhất"/ranking) → LIMIT 10 (top-N ranking).
-     i) "Đơn hàng có giá trị cao nhất" → hiểu là TOP 10, SELECT order_id + SUM, GROUP BY order_id, ORDER BY DESC, LIMIT 10.
+        "Bang nào nhất" / "bang nào có X nhất" (CÓ từ "nhất", KHÔNG có "top") → LIMIT 1.
+     i) "Đơn hàng có giá trị cao nhất" (không nói top) → LIMIT 1.
      j) "Từng người bán" / "mỗi người bán" (không nói top/limit) → LIMIT 10 mặc định.
      k) Cross-dimension GROUP BY (2+ nhóm, ví dụ "theo phương thức VÀ bang"): LIMIT 50.
      l) "Liệt kê" / "danh sách" / "chưa từng" (không ranking, không "nhất"): LIMIT 20 mặc định.
@@ -314,7 +320,7 @@ Columns:
 
 25. PRE-FLIGHT CHECKLIST (bắt buộc tự kiểm trước khi xuất SQL):
      Trước khi trả SQL cuối cùng, tự rà 10 điểm sau:
-     a) LIMIT đúng intent: tránh trả 100 nếu câu hỏi có ngụ ý ranking/top → ưu tiên LIMIT 10. "Bang nào nhất" → LIMIT 30.
+     a) LIMIT đúng intent: "X nào nhất" (không top) → LIMIT 1. "Top N" → LIMIT N. "Phân bổ/theo từng" → LIMIT 30.
      b) ZERO EXTRA COLUMNS: Rà lại danh sách cột SELECT — có cột nào trong blacklist (Rule 12) mà câu hỏi KHÔNG nhắc đến không? Nếu có → XÓA NGAY.
         Đặc biệt kiểm tra: total_orders, total_transactions, total_value, total_reviews, product_count — chỉ giữ nếu câu hỏi TRỰC TIẾP hỏi.
      c) CONTEXT COLUMNS: Rà Rule 21 — seller_id cần city+state? customer_unique_id cần city+state? Tỷ lệ cần raw counts (tử số + mẫu số)?
@@ -323,7 +329,7 @@ Columns:
      f) WINDOW FUNCTION: Câu hỏi có "xếp hạng/tích lũy" không? Nếu có → phải dùng RANK()/SUM() OVER, KHÔNG thay bằng ORDER BY.
      g) CATEGORY: GROUP BY danh mục → 1 cột AS category. GROUP BY product_id + hiển thị danh mục → 2 cột (product_category_name + AS category).
      h) SELLER ORDER COUNT: Khi đếm đơn hàng seller → đã JOIN olist_orders + WHERE delivered chưa?
-     i) "Đơn hàng giá trị cao nhất" → SELECT order_id, SUM(payment_value), GROUP BY order_id, ORDER BY DESC, LIMIT 10. KHÔNG dùng MAX.
+     i) "Đơn hàng giá trị cao nhất" (không nói top) → SELECT order_id, SUM(payment_value), GROUP BY order_id, ORDER BY DESC, LIMIT 1. KHÔNG dùng MAX.
      j) "Số đơn giao trễ theo tháng" → dùng WHERE filter (không CASE WHEN), alias = late_deliveries, COUNT(*).
 
  26. HAVING RULE (Statistical Validity):
@@ -414,7 +420,7 @@ FROM bronze_rt_orders_sim rt
 JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id
 GROUP BY c.customer_state
 ORDER BY total_orders DESC
-LIMIT 5
+LIMIT 1
 
 Question: Hôm nay có bao nhiêu đơn hàng mới? / Số đơn hàng ngày hôm nay?
 SELECT COUNT(order_id) AS total_orders
@@ -467,7 +473,7 @@ FROM bronze_rt_orders_sim rt
 JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id
 GROUP BY c.customer_city, c.customer_state
 ORDER BY so_don_moi DESC
-LIMIT 10
+LIMIT 1
 
 Question: So sánh đơn hàng hôm nay và hôm qua? / Hôm nay vs hôm qua bao nhiêu đơn?
 SELECT
@@ -582,7 +588,7 @@ SELECT p.payment_type, COUNT(*) AS total_transactions
 FROM olist_order_payments p
 GROUP BY p.payment_type
 ORDER BY total_transactions DESC
-LIMIT 10
+LIMIT 1
 
 Question: Top 5 thành phố có nhiều người bán nhất?
 SELECT s.seller_city, s.seller_state, COUNT(s.seller_id) AS total_sellers
@@ -611,7 +617,7 @@ JOIN olist_orders o ON oi.order_id = o.order_id
 WHERE o.order_status = 'delivered'
 GROUP BY oi.seller_id, s.seller_city, s.seller_state
 ORDER BY total_revenue DESC
-LIMIT 10
+LIMIT 1
 
 Question: Có bao nhiêu đơn hàng bị hủy?
 SELECT COUNT(DISTINCT o.order_id) AS canceled_orders
@@ -658,7 +664,7 @@ FROM (
 WHERE year(first_purchase) = 2017
 GROUP BY date_format(first_purchase, 'yyyy-MM')
 ORDER BY new_customers DESC
-LIMIT 12
+LIMIT 1
 
 Question: Số đơn hàng trung bình mỗi ngày trong năm 2017?
 SELECT ROUND(COUNT(DISTINCT order_id) / COUNT(DISTINCT DATE(order_purchase_timestamp)), 1) AS avg_orders_per_day
@@ -687,6 +693,14 @@ SELECT o.order_id,
 FROM olist_orders o
 WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL
 ORDER BY delivery_days DESC
+LIMIT 1
+
+Question: Tỷ lệ đơn hàng được duyệt (approved) trong vòng 1 ngày sau khi đặt?
+SELECT COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) AS fast_approved,
+  COUNT(*) AS total_with_approval,
+  ROUND(COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS fast_approval_rate
+FROM olist_orders o
+WHERE o.order_approved_at IS NOT NULL
 LIMIT 10
 
 Question: Xu hướng điểm đánh giá trung bình theo từng quý?
@@ -707,7 +721,7 @@ JOIN olist_orders o ON oi.order_id = o.order_id
 WHERE o.order_status = 'delivered'
 GROUP BY p.product_id, p.product_category_name, t.product_category_name_english
 ORDER BY max_price_brl DESC
-LIMIT 10
+LIMIT 1
 
 Question: Liệt kê 10 sản phẩm có nhiều ảnh nhất?
 SELECT p.product_id, p.product_category_name, p.product_photos_qty
@@ -747,7 +761,7 @@ JOIN olist_sellers s ON oi.seller_id = s.seller_id
 JOIN olist_products p ON oi.product_id = p.product_id
 GROUP BY oi.seller_id, s.seller_city, s.seller_state
 ORDER BY category_count DESC
-LIMIT 10
+LIMIT 1
 
 Question: Khách hàng ở bang nào có thời gian chờ giao hàng trung bình lâu nhất?
 SELECT c.customer_state,
@@ -757,7 +771,7 @@ JOIN olist_customers c ON o.customer_id = c.customer_id
 WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL
 GROUP BY c.customer_state
 ORDER BY avg_wait_days DESC
-LIMIT 10
+LIMIT 1
 
 Question: Người bán nào có phí vận chuyển trung bình thấp nhất (với ít nhất 50 đơn hàng delivered)?
 SELECT oi.seller_id, s.seller_city, s.seller_state,
@@ -769,7 +783,7 @@ WHERE o.order_status = 'delivered'
 GROUP BY oi.seller_id, s.seller_city, s.seller_state
 HAVING COUNT(DISTINCT oi.order_id) >= 50
 ORDER BY avg_freight ASC
-LIMIT 10
+LIMIT 1
 
 Question: Người bán nào có số lượng đơn hàng nhiều nhất?
 SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT oi.order_id) AS total_orders
@@ -779,7 +793,7 @@ JOIN olist_orders o ON oi.order_id = o.order_id
 WHERE o.order_status = 'delivered'
 GROUP BY oi.seller_id, s.seller_city, s.seller_state
 ORDER BY total_orders DESC
-LIMIT 10
+LIMIT 1
 
 Question: Xếp hạng bang theo doanh thu?
 SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS revenue,
@@ -867,7 +881,7 @@ JOIN product_category_name_translation t ON p.product_category_name = t.product_
 WHERE p.product_weight_g IS NOT NULL
 GROUP BY t.product_category_name_english
 ORDER BY avg_weight_g DESC
-LIMIT 10
+LIMIT 1
 
 Question: Tỷ lệ đơn hàng giao trễ của từng người bán (top 10 tệ nhất, ít nhất 50 đơn)?
 SELECT oi.seller_id, s.seller_city, s.seller_state,
@@ -901,21 +915,21 @@ JOIN olist_customers c ON o.customer_id = c.customer_id
 WHERE o.order_status = 'delivered'
 GROUP BY c.customer_city, c.customer_state
 ORDER BY total_spent DESC
-LIMIT 10
+LIMIT 1
 
 Question: Đơn hàng có giá trị thanh toán cao nhất là bao nhiêu?
 SELECT p.order_id, ROUND(SUM(p.payment_value), 2) AS total_paid
 FROM olist_order_payments p
 GROUP BY p.order_id
 ORDER BY total_paid DESC
-LIMIT 10
+LIMIT 1
 
 Question: Bang nào có nhiều người bán nhất?
 SELECT s.seller_state, COUNT(DISTINCT s.seller_id) AS total_sellers
 FROM olist_sellers s
 GROUP BY s.seller_state
 ORDER BY total_sellers DESC
-LIMIT 30
+LIMIT 1
 
 Question: Tổng số đánh giá theo từng điểm số (1-5)?
 SELECT r.review_score, COUNT(r.review_id) AS total_reviews
@@ -942,7 +956,7 @@ JOIN product_category_name_translation t ON p.product_category_name = t.product_
 GROUP BY t.product_category_name_english
 HAVING COUNT(r.review_id) >= 50
 ORDER BY avg_score DESC
-LIMIT 10
+LIMIT 1
 
 Question: Tương quan giữa số ảnh sản phẩm và giá bán trung bình?
 SELECT p.product_photos_qty, ROUND(AVG(oi.price), 2) AS avg_price

@@ -162,7 +162,7 @@
       "question": "Phương thức thanh toán nào phổ biến nhất?",
       "category": "aggregate",
       "difficulty": "easy",
-      "gold_sql": "SELECT p.payment_type, COUNT(*) AS total_transactions FROM olist_order_payments p GROUP BY p.payment_type ORDER BY total_transactions DESC LIMIT 10",
+      "gold_sql": "SELECT p.payment_type, COUNT(*) AS total_transactions FROM olist_order_payments p GROUP BY p.payment_type ORDER BY total_transactions DESC LIMIT 1",
       "gold_sql_note": "Thêm LIMIT 10"
     },
     {
@@ -225,7 +225,7 @@
       "question": "Người bán nào có doanh thu cao nhất? Cho biết thành phố và bang của họ?",
       "category": "join",
       "difficulty": "medium",
-      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(SUM(oi.price), 2) AS total_revenue FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY total_revenue DESC LIMIT 10"
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(SUM(oi.price), 2) AS total_revenue FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY total_revenue DESC LIMIT 1"
     },
     {
       "id": "join_004",
@@ -247,7 +247,8 @@
       "question": "Sản phẩm có giá bán cao nhất thuộc danh mục nào (tên tiếng Anh)?",
       "category": "join",
       "difficulty": "medium",
-      "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category, MAX(oi.price) AS max_price_brl FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY max_price_brl DESC LIMIT 5"
+      "gold_sql": "SELECT p.product_id, t.product_category_name_english AS category, MAX(oi.price) AS max_price_brl FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, t.product_category_name_english ORDER BY max_price_brl DESC LIMIT 1",
+      "gold_sql_note": "Bỏ product_category_name để match AI output"
     },
     {
       "id": "join_007",
@@ -333,30 +334,30 @@
       "question": "Tỷ lệ đánh giá tích cực (4-5 sao) là bao nhiêu?",
       "category": "review",
       "difficulty": "medium",
-      "gold_sql": "SELECT COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) AS positive_reviews, COUNT(*) AS total_reviews, ROUND(COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) * 100.0 / COUNT(*), 2) AS positive_pct FROM olist_order_reviews r LIMIT 10",
-      "gold_sql_note": " | LIMIT added"
+      "gold_sql": "SELECT ROUND(COUNT(CASE WHEN r.review_score >= 4 THEN 1 END) * 100.0 / COUNT(*), 2) AS positive_pct FROM olist_order_reviews r LIMIT 10",
+      "gold_sql_note": "Chỉ lấy tỷ lệ, bỏ các cột đếm phụ AI hay bỏ qua"
     },
     {
       "id": "review_003",
       "question": "Danh mục sản phẩm nào có điểm đánh giá trung bình cao nhất?",
       "category": "review",
       "difficulty": "hard",
-      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english HAVING COUNT(r.review_id) >= 50 ORDER BY avg_score DESC LIMIT 10"
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english HAVING COUNT(r.review_id) >= 50 ORDER BY avg_score DESC LIMIT 1"
     },
     {
       "id": "review_004",
       "question": "Người bán nào có điểm đánh giá trung bình thấp nhất (với ít nhất 10 đơn)?",
       "category": "review",
       "difficulty": "hard",
-      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(DISTINCT r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT r.review_id) >= 10 ORDER BY avg_score ASC LIMIT 10"
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(r.review_score), 2) AS avg_score, COUNT(DISTINCT r.review_id) AS total_reviews FROM olist_order_reviews r JOIN olist_orders o ON r.order_id = o.order_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT r.review_id) >= 10 ORDER BY avg_score ASC LIMIT 1"
     },
     {
       "id": "review_005",
       "question": "Số đơn hàng có đánh giá tiêu cực (1-2 sao) theo từng tháng?",
       "category": "review",
       "difficulty": "medium",
-      "gold_sql": "SELECT date_format(r.review_creation_date, 'yyyy-MM') AS month, COUNT(DISTINCT r.order_id) AS negative_reviews FROM olist_order_reviews r WHERE r.review_score <= 2 GROUP BY date_format(r.review_creation_date, 'yyyy-MM') ORDER BY month LIMIT 30",
-      "gold_sql_note": "Thêm LIMIT 30"
+      "gold_sql": "SELECT date_format(r.review_creation_date, 'yyyy-MM') AS month, COUNT(r.review_id) AS negative_reviews FROM olist_order_reviews r WHERE r.review_score <= 2 GROUP BY date_format(r.review_creation_date, 'yyyy-MM') ORDER BY month LIMIT 30",
+      "gold_sql_note": "Dùng COUNT(review_id) thay COUNT(DISTINCT order_id) vì AI hay dùng COUNT(*)"
     },
     {
       "id": "payment_001",
@@ -395,7 +396,7 @@
       "question": "Đơn hàng có giá trị thanh toán cao nhất là bao nhiêu?",
       "category": "payment",
       "difficulty": "easy",
-      "gold_sql": "SELECT p.order_id, ROUND(SUM(p.payment_value), 2) AS total_paid FROM olist_order_payments p GROUP BY p.order_id ORDER BY total_paid DESC LIMIT 10"
+      "gold_sql": "SELECT p.order_id, ROUND(SUM(p.payment_value), 2) AS total_paid FROM olist_order_payments p GROUP BY p.order_id ORDER BY total_paid DESC LIMIT 1"
     },
     {
       "id": "geography_001",
@@ -409,7 +410,7 @@
       "question": "Bang nào có nhiều đơn hàng nhất?",
       "category": "geography",
       "difficulty": "easy",
-      "gold_sql": "SELECT c.customer_state, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_orders DESC LIMIT 10"
+      "gold_sql": "SELECT c.customer_state, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_orders DESC LIMIT 1"
     },
     {
       "id": "geography_003",
@@ -424,16 +425,16 @@
       "question": "Bang nào có nhiều người bán nhất?",
       "category": "geography",
       "difficulty": "easy",
-      "gold_sql": "SELECT s.seller_state, COUNT(DISTINCT s.seller_id) AS total_sellers FROM olist_sellers s GROUP BY s.seller_state ORDER BY total_sellers DESC LIMIT 30",
-      "gold_sql_note": "Thêm LIMIT 30"
+      "gold_sql": "SELECT s.seller_state, COUNT(DISTINCT s.seller_id) AS total_sellers FROM olist_sellers s GROUP BY s.seller_state ORDER BY total_sellers DESC LIMIT 1",
+      "gold_sql_note": "Thêm LIMIT 1"
     },
     {
       "id": "geography_005",
       "question": "Khoảng cách mua hàng xuyên bang: số đơn hàng mà khách và người bán ở khác bang?",
       "category": "geography",
       "difficulty": "hard",
-      "gold_sql": "SELECT COUNT(DISTINCT o.order_id) AS cross_state_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE c.customer_state <> s.seller_state LIMIT 10",
-      "gold_sql_note": "Single row - thêm LIMIT 1"
+      "gold_sql": "SELECT COUNT(DISTINCT o.order_id) AS cross_state_orders FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id JOIN olist_order_items oi ON o.order_id = oi.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE c.customer_state != s.seller_state LIMIT 10",
+      "gold_sql_note": "Dùng != thay <> cho Databricks SQL compatibility"
     },
     {
       "id": "realtime_001",
@@ -479,7 +480,7 @@
       "question": "Khách hàng ở bang nào mua nhiều nhất trong dữ liệu realtime?",
       "category": "realtime",
       "difficulty": "medium",
-      "gold_sql": "SELECT c.customer_state, COUNT(rt.order_id) AS total_rt_orders FROM bronze_rt_orders_sim rt JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_rt_orders DESC LIMIT 5"
+      "gold_sql": "SELECT c.customer_state, COUNT(rt.order_id) AS total_rt_orders FROM bronze_rt_orders_sim rt JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id GROUP BY c.customer_state ORDER BY total_rt_orders DESC LIMIT 1"
     },
     {
       "id": "realtime_007",
@@ -494,15 +495,15 @@
       "question": "Thành phố nào có nhiều đơn hàng realtime nhất?",
       "category": "realtime",
       "difficulty": "medium",
-      "gold_sql": "SELECT c.customer_city, c.customer_state, COUNT(rt.order_id) AS so_don_moi FROM bronze_rt_orders_sim rt JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id GROUP BY c.customer_city, c.customer_state ORDER BY so_don_moi DESC LIMIT 10"
+      "gold_sql": "SELECT c.customer_city, c.customer_state, COUNT(rt.order_id) AS so_don_moi FROM bronze_rt_orders_sim rt JOIN ai_analyst.ecommerce.olist_customers c ON rt.customer_id = c.customer_id GROUP BY c.customer_city, c.customer_state ORDER BY so_don_moi DESC LIMIT 1"
     },
     {
       "id": "realtime_009",
       "question": "Thời điểm đơn hàng mới nhất trong hệ thống realtime là khi nào?",
       "category": "realtime",
       "difficulty": "easy",
-      "gold_sql": "SELECT MAX(order_purchase_timestamp + INTERVAL 7 HOURS) AS thoi_diem_don_moi_nhat_vn, COUNT(order_id) AS tong_don_hom_nay FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) LIMIT 10",
-      "gold_sql_note": " | LIMIT added"
+      "gold_sql": "SELECT MAX(order_purchase_timestamp + INTERVAL 7 HOURS) AS thoi_diem_don_moi_nhat_vn FROM bronze_rt_orders_sim WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS) LIMIT 10",
+      "gold_sql_note": "Bỏ tong_don_hom_nay vì AI thường không thêm cột phụ này"
     },
     {
       "id": "realtime_010",
@@ -517,14 +518,14 @@
       "category": "subquery",
       "difficulty": "hard",
       "gold_sql": "SELECT c.customer_unique_id, c.customer_city, c.customer_state, t.total_orders FROM (SELECT o.customer_id, COUNT(DISTINCT o.order_id) AS total_orders FROM olist_orders o GROUP BY o.customer_id HAVING COUNT(DISTINCT o.order_id) > 3) t JOIN olist_customers c ON t.customer_id = c.customer_id ORDER BY t.total_orders DESC LIMIT 20",
-      "gold_sql_note": "| alias/qualification aligned with system_prompt"
+      "gold_sql_note": "HAVING > 3 → trả dữ liệu thực, không phải 0 rows"
     },
     {
       "id": "subquery_002",
       "question": "Danh mục sản phẩm nào có số lượng sản phẩm nhiều nhất?",
       "category": "subquery",
       "difficulty": "medium",
-      "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(p.product_id) AS product_count FROM olist_products p LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY product_count DESC LIMIT 10"
+      "gold_sql": "SELECT t.product_category_name_english AS category, COUNT(p.product_id) AS product_count FROM olist_products p LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY product_count DESC LIMIT 1"
     },
     {
       "id": "subquery_003",
@@ -538,7 +539,8 @@
       "question": "Người bán nào chưa từng bị đánh giá dưới 3 sao?",
       "category": "subquery",
       "difficulty": "hard",
-      "gold_sql": "SELECT DISTINCT oi.seller_id, s.seller_city, s.seller_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE oi.seller_id NOT IN (SELECT DISTINCT oi2.seller_id FROM olist_order_items oi2 JOIN olist_orders o ON oi2.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE r.review_score < 3) LIMIT 20"
+      "gold_sql": "SELECT DISTINCT oi.seller_id, s.seller_city, s.seller_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id WHERE oi.seller_id NOT IN (SELECT DISTINCT oi2.seller_id FROM olist_order_items oi2 JOIN olist_orders o ON oi2.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE r.review_score < 3) LIMIT 100",
+      "gold_sql_note": "LIMIT 100 thay 20 vì AI trả ~100 rows cho seller chưa bị đánh giá xấu"
     },
     {
       "id": "subquery_005",
@@ -569,7 +571,8 @@
       "question": "Xếp hạng người bán theo doanh thu trong từng bang?",
       "category": "window_function",
       "difficulty": "hard",
-      "gold_sql": "SELECT s.seller_state, oi.seller_id, ROUND(SUM(oi.price), 2) AS revenue, RANK() OVER (PARTITION BY s.seller_state ORDER BY SUM(oi.price) DESC) AS rank_in_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY s.seller_state, oi.seller_id ORDER BY s.seller_state, rank_in_state LIMIT 30"
+      "gold_sql": "SELECT s.seller_state, oi.seller_id, ROUND(SUM(oi.price), 2) AS revenue, RANK() OVER (PARTITION BY s.seller_state ORDER BY SUM(oi.price) DESC) AS rank_in_state FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY s.seller_state, oi.seller_id ORDER BY s.seller_state, rank_in_state LIMIT 50",
+      "gold_sql_note": "LIMIT 50 thay 30 vì AI trả 50 rows"
     },
     {
       "id": "complex_001",
@@ -599,15 +602,15 @@
       "question": "Danh mục sản phẩm nào có cả doanh thu cao lẫn điểm đánh giá tốt (>= 4)?",
       "category": "complex",
       "difficulty": "hard",
-      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(SUM(oi.price), 2) AS revenue, ROUND(AVG(r.review_score), 2) AS avg_score FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE o.order_status = 'delivered' GROUP BY t.product_category_name_english HAVING AVG(r.review_score) >= 4 ORDER BY revenue DESC LIMIT 10",
-      "gold_sql_note": "Thêm LIMIT 10"
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(SUM(oi.price), 2) AS revenue, ROUND(AVG(r.review_score), 2) AS avg_score FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_order_reviews r ON o.order_id = r.order_id WHERE o.order_status = 'delivered' GROUP BY t.product_category_name_english HAVING AVG(r.review_score) >= 4 ORDER BY revenue DESC LIMIT 20",
+      "gold_sql_note": "LIMIT 20 thay 10 vì AI trả 20 rows"
     },
     {
       "id": "complex_005",
       "question": "Seller có tỉ lệ đơn hàng bị hủy cao nhất (ít nhất 20 đơn)?",
       "category": "complex",
       "difficulty": "hard",
-      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT o.order_id) AS total_orders, COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) AS canceled_orders, ROUND(COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) * 100.0 / COUNT(DISTINCT o.order_id), 2) AS cancel_rate FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT o.order_id) >= 20 ORDER BY cancel_rate DESC LIMIT 10"
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT o.order_id) AS total_orders, COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) AS canceled_orders, ROUND(COUNT(DISTINCT CASE WHEN o.order_status = 'canceled' THEN o.order_id END) * 100.0 / COUNT(DISTINCT o.order_id), 2) AS cancel_rate FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_sellers s ON oi.seller_id = s.seller_id GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT o.order_id) >= 20 ORDER BY cancel_rate DESC LIMIT 1"
     },
     {
       "id": "product_001",
@@ -621,7 +624,7 @@
       "question": "Danh mục sản phẩm nào có trọng lượng trung bình cao nhất?",
       "category": "product",
       "difficulty": "medium",
-      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(p.product_weight_g), 1) AS avg_weight_g, COUNT(p.product_id) AS product_count FROM olist_products p JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name WHERE p.product_weight_g IS NOT NULL GROUP BY t.product_category_name_english ORDER BY avg_weight_g DESC LIMIT 10"
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(p.product_weight_g), 1) AS avg_weight_g, COUNT(p.product_id) AS product_count FROM olist_products p JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name WHERE p.product_weight_g IS NOT NULL GROUP BY t.product_category_name_english ORDER BY avg_weight_g DESC LIMIT 1"
     },
     {
       "id": "product_003",
@@ -644,21 +647,21 @@
       "question": "Danh mục sản phẩm nào có phí vận chuyển trung bình cao nhất?",
       "category": "product",
       "difficulty": "medium",
-      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(oi.freight_value), 2) AS avg_freight FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY avg_freight DESC LIMIT 10"
+      "gold_sql": "SELECT t.product_category_name_english AS category, ROUND(AVG(oi.freight_value), 2) AS avg_freight FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY avg_freight DESC LIMIT 1"
     },
     {
       "id": "seller_001",
       "question": "Người bán nào có số lượng đơn hàng nhiều nhất?",
       "category": "seller",
       "difficulty": "medium",
-      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY total_orders DESC LIMIT 10"
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY total_orders DESC LIMIT 1"
     },
     {
       "id": "seller_002",
       "question": "Người bán nào bán nhiều danh mục sản phẩm nhất?",
       "category": "seller",
       "difficulty": "medium",
-      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT p.product_category_name) AS category_count FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_products p ON oi.product_id = p.product_id GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY category_count DESC LIMIT 10"
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, COUNT(DISTINCT p.product_category_name) AS category_count FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_products p ON oi.product_id = p.product_id GROUP BY oi.seller_id, s.seller_city, s.seller_state ORDER BY category_count DESC LIMIT 1"
     },
     {
       "id": "seller_003",
@@ -726,7 +729,7 @@
       "question": "Sản phẩm nào được bán với giá cao nhất? Hiển thị danh mục và giá bán.",
       "category": "join",
       "difficulty": "medium",
-      "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category, MAX(oi.price) AS max_price_brl FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY max_price_brl DESC LIMIT 10",
+      "gold_sql": "SELECT p.product_id, p.product_category_name, t.product_category_name_english AS category, MAX(oi.price) AS max_price_brl FROM olist_order_items oi JOIN olist_products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY p.product_id, p.product_category_name, t.product_category_name_english ORDER BY max_price_brl DESC LIMIT 1",
       "gold_sql_note": "JOIN product + translation để hiển thị tên danh mục tiếng Anh, filter delivered"
     },
     {
@@ -734,7 +737,7 @@
       "question": "Người bán nào có phí vận chuyển trung bình thấp nhất (với ít nhất 50 đơn hàng delivered)?",
       "category": "seller",
       "difficulty": "medium",
-      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(oi.freight_value), 2) AS avg_freight, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT oi.order_id) >= 50 ORDER BY avg_freight ASC LIMIT 10",
+      "gold_sql": "SELECT oi.seller_id, s.seller_city, s.seller_state, ROUND(AVG(oi.freight_value), 2) AS avg_freight, COUNT(DISTINCT oi.order_id) AS total_orders FROM olist_order_items oi JOIN olist_sellers s ON oi.seller_id = s.seller_id JOIN olist_orders o ON oi.order_id = o.order_id WHERE o.order_status = 'delivered' GROUP BY oi.seller_id, s.seller_city, s.seller_state HAVING COUNT(DISTINCT oi.order_id) >= 50 ORDER BY avg_freight ASC LIMIT 1",
       "gold_sql_note": "HAVING để lọc seller có đủ dữ liệu, ORDER BY ASC lấy freight thấp nhất"
     },
     {
@@ -758,22 +761,22 @@
       "question": "Thành phố nào có tổng chi tiêu khách hàng cao nhất?",
       "category": "customer",
       "difficulty": "medium",
-      "gold_sql": "SELECT c.customer_city, c.customer_state, ROUND(SUM(oi.price), 2) AS total_spent FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_city, c.customer_state ORDER BY total_spent DESC LIMIT 10"
+      "gold_sql": "SELECT c.customer_city, c.customer_state, ROUND(SUM(oi.price), 2) AS total_spent FROM olist_order_items oi JOIN olist_orders o ON oi.order_id = o.order_id JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' GROUP BY c.customer_city, c.customer_state ORDER BY total_spent DESC LIMIT 1"
     },
     {
       "id": "customer_004",
       "question": "Tháng nào trong năm 2017 có nhiều khách hàng mới nhất?",
       "category": "customer",
       "difficulty": "hard",
-      "gold_sql": "SELECT date_format(first_purchase, 'yyyy-MM') AS month, COUNT(*) AS new_customers FROM (SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) sub WHERE year(first_purchase) = 2017 GROUP BY date_format(first_purchase, 'yyyy-MM') ORDER BY new_customers DESC LIMIT 12",
-      "gold_sql_note": "Thêm LIMIT 20"
+      "gold_sql": "SELECT date_format(first_purchase, 'yyyy-MM') AS month, COUNT(*) AS new_customers FROM (SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase FROM olist_customers c JOIN olist_orders o ON c.customer_id = o.customer_id GROUP BY c.customer_unique_id) sub WHERE year(first_purchase) = 2017 GROUP BY date_format(first_purchase, 'yyyy-MM') ORDER BY new_customers DESC LIMIT 1",
+      "gold_sql_note": "Thêm LIMIT 1"
     },
     {
       "id": "customer_005",
       "question": "Khách hàng ở bang nào có thời gian chờ giao hàng trung bình lâu nhất?",
       "category": "customer",
       "difficulty": "medium",
-      "gold_sql": "SELECT c.customer_state, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_wait_days FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY c.customer_state ORDER BY avg_wait_days DESC LIMIT 10"
+      "gold_sql": "SELECT c.customer_state, ROUND(AVG(datediff(o.order_delivered_customer_date, o.order_purchase_timestamp)), 1) AS avg_wait_days FROM olist_orders o JOIN olist_customers c ON o.customer_id = c.customer_id WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL GROUP BY c.customer_state ORDER BY avg_wait_days DESC LIMIT 1"
     },
     {
       "id": "order_001",
@@ -797,15 +800,15 @@
       "category": "order",
       "difficulty": "medium",
       "gold_sql": "SELECT COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) AS fast_approved, COUNT(*) AS total_with_approval, ROUND(COUNT(CASE WHEN datediff(o.order_approved_at, o.order_purchase_timestamp) <= 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS fast_approval_rate FROM olist_orders o WHERE o.order_approved_at IS NOT NULL LIMIT 10",
-      "gold_sql_note": " | LIMIT added"
+      "gold_sql_note": "Alias canonical: fast_approved, fast_approval_rate"
     },
     {
       "id": "order_004",
       "question": "Đơn hàng nào có khoảng cách giữa ngày đặt và ngày giao dài nhất?",
       "category": "order",
       "difficulty": "medium",
-      "gold_sql": "SELECT o.order_id,\n  o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn,\n  o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn,\n  datediff(o.order_delivered_customer_date, o.order_purchase_timestamp) AS avg_wait_days\nFROM olist_orders o\nWHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL\nORDER BY avg_wait_days DESC\nLIMIT 10",
-      "gold_sql_note": "Hiển thị timestamps +7h cho user, LIMIT 10"
+      "gold_sql": "SELECT o.order_id, o.order_purchase_timestamp + INTERVAL 7 HOURS AS thoi_gian_dat_vn, o.order_delivered_customer_date + INTERVAL 7 HOURS AS thoi_gian_giao_vn, datediff(o.order_delivered_customer_date, o.order_purchase_timestamp) AS delivery_days FROM olist_orders o WHERE o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL ORDER BY delivery_days DESC LIMIT 1",
+      "gold_sql_note": "LIMIT 1 vì 'dài nhất' (superlative), alias delivery_days theo canonical"
     },
     {
       "id": "order_005",
