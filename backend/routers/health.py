@@ -58,8 +58,15 @@ def health_check(deep: bool = Query(default=False)):
 
     overall = "ok" if databricks_status == "healthy" and llm_status == "healthy" else "degraded"
 
+    from config import llm_config
+    provider = (llm_config.provider or "").lower().strip()
+    model_name = llm_config.gemini_model if provider == "gemini" else (
+        llm_config.openai_model if provider == "openai" else "Databricks Model"
+    )
+
     return {
         "status": overall,
+        "model": model_name,
         "services": {
             "api": "healthy",
             "databricks": databricks_status,

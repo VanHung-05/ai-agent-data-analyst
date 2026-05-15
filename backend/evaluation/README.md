@@ -76,7 +76,7 @@ python -m evaluation.sql_eval_runner \
   --estimated-llm-calls-per-sample 1
 ```
 
-Chạy **tối đa 20 mẫu** để test nhanh:
+Chạy **20 mẫu ngẫu nhiên** để test nhanh:
 
 ```bash
 python -m evaluation.sql_eval_runner \
@@ -84,6 +84,7 @@ python -m evaluation.sql_eval_runner \
   --output-dir evaluation/reports \
   --generator sql_only \
   --max-samples 20 \
+  --shuffle \
   --min-request-interval-sec 4.2 \
   --generation-max-attempts 5 \
   --estimated-llm-calls-per-sample 1

@@ -874,6 +874,8 @@ async def run(args: argparse.Namespace) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     samples = load_dataset(dataset_path)
+    if getattr(args, "shuffle", False):
+        random.shuffle(samples)
     if args.max_samples > 0:
         samples = samples[: args.max_samples]
     executor = DatabricksSQLExecutor()
@@ -965,6 +967,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=0,
         help="Limit number of samples to evaluate. 0 means run all.",
+    )
+    parser.add_argument(
+        "--shuffle",
+        action="store_true",
+        help="Shuffle the dataset before evaluating (useful with --max-samples).",
     )
     return parser.parse_args()
 

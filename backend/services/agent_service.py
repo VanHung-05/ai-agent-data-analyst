@@ -220,7 +220,7 @@ async def _node_router(state: WorkflowState) -> WorkflowState:
     result = state["result"]
     progress_hook = state.get("progress_hook")
 
-    await _emit_progress(progress_hook, "router", "Router Agent phân loại intent...")
+    await _emit_progress(progress_hook, "router", "...")
     routing = await _run_in_executor(route_detail, question, llm)
     route = routing["intent"]
     result["routing_info"] = routing
@@ -235,17 +235,17 @@ async def _node_conversation(state: WorkflowState) -> WorkflowState:
     result = state["result"]
     progress_hook = state.get("progress_hook")
 
-    await _emit_progress(progress_hook, "conversation", "Conversation Agent đang phản hồi...")
+    await _emit_progress(progress_hook, "conversation", "...")
     message = await _run_in_executor(conversation_response, question, None, llm)
     result["answer"] = message
-    result["data"] = [{"assistant_response": message}]
-    result["row_count"] = 1
+    result["data"] = []
+    result["row_count"] = 0
     result["visualization_recommendation"] = {
         "chart_type": "conversation",
         "reason": "Routed to Conversation Agent",
     }
     result["error"] = None
-    await _emit_progress(progress_hook, "done", "Hoàn tất.")
+    await _emit_progress(progress_hook, "done", "...")
     return {"result": result}
 
 
@@ -259,7 +259,7 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
     progress_hook = state.get("progress_hook")
 
     try:
-        await _emit_progress(progress_hook, "db_connect", "Kết nối Databricks...")
+        await _emit_progress(progress_hook, "db_connect", "...")
         db = await _run_in_executor(get_database)
     except Exception as e:
         result["error"] = f"Lỗi kết nối Databricks: {str(e)}"
@@ -274,7 +274,7 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
 
     while retries < max_retries:
         try:
-            await _emit_progress(progress_hook, "sql_generate", f"Sinh SQL (lần {retries + 1}/{max_retries})...")
+            await _emit_progress(progress_hook, "sql_generate", "...")
             if retries == 0:
                 prompt_input = {
                     "question": f"{system_prompt}\n\nUser Question: {question}"
@@ -300,7 +300,7 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
             generated_sql = sanitize_sql(generated_sql)
             result["generated_sql"] = generated_sql
 
-            await _emit_progress(progress_hook, "sql_execute", "Thực thi truy vấn SQL...")
+            await _emit_progress(progress_hook, "sql_execute", "...")
             execute_tool = QuerySQLDataBaseTool(db=db)
             raw_result = await _run_in_executor(execute_tool.invoke, generated_sql)
 
@@ -308,14 +308,14 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
             result["data"] = _rename_parsed_columns(result["data"], generated_sql)
             result["row_count"] = len(result["data"])
 
-            await _emit_progress(progress_hook, "visualize", "Đề xuất trực quan hóa dữ liệu...")
+            await _emit_progress(progress_hook, "visualize", "...")
             chart_rec = await _run_in_executor(
                 recommend_chart, question, generated_sql, result["data"], llm
             )
             chart_rec["routed_agent"] = route
             result["visualization_recommendation"] = chart_rec
 
-            await _emit_progress(progress_hook, "nlg", "Tạo câu trả lời tự nhiên...")
+            await _emit_progress(progress_hook, "nlg", "...")
             result["answer"] = await _run_in_executor(
                 generate_natural_language_answer, question, result["data"], llm
             )
@@ -323,7 +323,7 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
 
             if retries > 0:
                 logger.info("Retry lần %s thành công", retries)
-            await _emit_progress(progress_hook, "done", "Hoàn tất.")
+            await _emit_progress(progress_hook, "done", "...")
             return {"result": result}
 
         except Exception as e:
@@ -332,7 +332,7 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
             logger.warning("Lỗi SQL (thử %s/%s): %s", retries, max_retries, last_error_str)
 
             if retries >= max_retries:
-                await _emit_progress(progress_hook, "fallback", "SQL thất bại, chuyển sang Conversation Agent...")
+                await _emit_progress(progress_hook, "fallback", "...")
                 fallback_msg = await _run_in_executor(
                     conversation_response, question, last_error_str, llm
                 )
@@ -420,7 +420,7 @@ async def process_question(
 
     # ── Chính sách read-only: chặn yêu cầu sửa/xóa/ghi bằng ngôn ngữ tự nhiên (trước LLM/SQL) ──
     if is_natural_language_write_request(question):
-        await _emit_progress(progress_hook, "policy_block", "Chặn yêu cầu thay đổi dữ liệu (read-only)...")
+        await _emit_progress(progress_hook, "policy_block", "...")
         result["answer"] = WRITE_REQUEST_REFUSAL_VI
         result["routing_info"] = {
             "intent": "conversation",
@@ -429,19 +429,19 @@ async def process_question(
             "routing_method": "policy_block",
             "block_reason": "natural_language_write_request",
         }
-        result["data"] = [{"policy": "read_only", "detail": result["routing_info"]["block_reason"]}]
-        result["row_count"] = 1
+        result["data"] = []
+        result["row_count"] = 0
         result["visualization_recommendation"] = {
             "chart_type": "conversation",
             "reason": "Blocked: data modification request (read-only policy)",
         }
         result["error"] = None
-        await _emit_progress(progress_hook, "done", "Hoàn tất.")
+        await _emit_progress(progress_hook, "done", "...")
         return result
 
     # ── Bước 1: Khởi tạo LLM ──
     try:
-        await _emit_progress(progress_hook, "llm_init", "Khởi tạo LLM...")
+        await _emit_progress(progress_hook, "llm_init", "...")
         llm = await _run_in_executor(get_llm)
     except Exception as e:
         result["error"] = f"Lỗi khởi tạo LLM: {str(e)}"
