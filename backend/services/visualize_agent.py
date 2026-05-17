@@ -122,12 +122,38 @@ def recommend_chart(
                 spec["reason"] = "Time series detected"
                 return spec
 
-    # Pie: tỉ lệ / phần trăm / proportion — ưu tiên trước bar/ranking
+    # Rate/Percentage BY GROUP → bar chart (không phải pie)
+    # Ví dụ: "tỷ lệ giao trễ theo bang", "tỷ lệ hủy theo danh mục"
+    # Pie chỉ đúng khi data là parts-of-a-whole (tổng = 100%)
+    rate_kws = [
+        "tỉ lệ", "tỷ lệ", "phần trăm", "ratio", "percentage", "rate",
+    ]
+    group_kws = [
+        "theo", "từng", "mỗi", "by", "per", "each",
+        "bang", "state", "danh mục", "category", "seller", "tháng", "month",
+    ]
+    is_rate_question = any(kw in q for kw in rate_kws)
+    is_grouped = any(kw in q for kw in group_kws)
+
+    # Nếu hỏi "tỷ lệ" + "theo nhóm" → bar chart (mỗi nhóm có rate riêng)
+    if is_rate_question and is_grouped and row_count >= 2:
+        # Tìm cột _pct/_rate làm y-axis
+        pct_col = _find_pct_column(columns)
+        bar_y = pct_col or y_col
+        spec = _build_chart_spec("bar", question, x_col, bar_y)
+        ok, _why = _validate_chart_for_data(
+            "bar", data, columns, spec.get("x"), spec.get("y")
+        )
+        if ok:
+            spec["reason"] = "Rate/percentage comparison across groups → bar chart"
+            return spec
+
+    # Pie: phân bổ / cơ cấu / proportion — parts of a whole
     pie_kws = [
-        "tỉ lệ", "tỷ lệ", "phần trăm", "ratio", "percentage",
         "proportion", "share", "cơ cấu", "phân bổ",
     ]
-    if any(kw in q for kw in pie_kws):
+    # Chỉ dùng pie khi câu hỏi KHÔNG phải rate-by-group
+    if any(kw in q for kw in pie_kws) or (is_rate_question and not is_grouped):
         if len(columns) >= 2 and row_count >= 2:
             spec = _build_chart_spec("pie", question, x_col, y_col)
             ok, _why = _validate_chart_for_data(
@@ -399,6 +425,12 @@ def _choose_axes(data: list[dict], columns: list[str]) -> tuple[str | None, str 
 
     x_candidates = non_id_non_numeric if non_id_non_numeric else non_numeric_cols
 
+    # Ưu tiên cột _pct/_rate làm y-axis (metric chính user quan tâm)
+    pct_col = _find_pct_column(numeric_cols)
+    preferred_y = pct_col if pct_col else (numeric_cols[0] if numeric_cols else None)
+
+    if x_candidates and preferred_y:
+        return x_candidates[0], preferred_y
     if x_candidates and numeric_cols:
         return x_candidates[0], numeric_cols[0]
     if non_numeric_cols and numeric_cols:
@@ -408,6 +440,16 @@ def _choose_axes(data: list[dict], columns: list[str]) -> tuple[str | None, str 
     if len(columns) >= 2:
         return columns[0], columns[1]
     return columns[0], columns[0]
+
+
+def _find_pct_column(columns: list[str]) -> str | None:
+    """Tìm cột tỷ lệ/phần trăm trong danh sách cột (ưu tiên làm y-axis)."""
+    pct_suffixes = ["_pct", "_rate", "_percentage", "_ratio", "late_pct", "cancel_rate"]
+    for col in columns:
+        col_lower = col.lower()
+        if any(col_lower.endswith(s) or col_lower == s for s in pct_suffixes):
+            return col
+    return None
 
 
 def _find_non_id_x(data: list[dict], columns: list[str], current_x: str) -> str | None:
