@@ -46,6 +46,18 @@ Columns:
   - order_estimated_delivery_date TIMESTAMP — Ngày giao hàng dự kiến
   - ingest_run_ts TIMESTAMP                — Thời điểm nạp dữ liệu
 
+--- TABLE: bronze_rt_order_items_sim ---
+Description: Bảng chi tiết sản phẩm trong đơn hàng giả lập thời gian thực. Là bảng con của bronze_rt_orders_sim — 1 đơn hàng có thể có nhiều items. Dùng khi cần phân tích phí vận chuyển, giá sản phẩm, hoặc số lượng item của đơn hàng realtime.
+Columns:
+  - order_id STRING                    — FK → bronze_rt_orders_sim.order_id
+  - order_item_id INT                  — Số thứ tự item trong đơn (1, 2, 3...)
+  - product_id STRING                  — FK → olist_products.product_id
+  - seller_id STRING                   — FK → olist_sellers.seller_id
+  - shipping_limit_date TIMESTAMP      — Hạn chót seller giao cho carrier
+  - price DECIMAL(10,2)                — Giá bán sản phẩm (BRL)
+  - freight_value DECIMAL(10,2)        — Phí vận chuyển của item (BRL)
+  - ingest_run_ts TIMESTAMP            — Thời điểm nạp dữ liệu (JOIN với bronze_rt_orders_sim.ingest_run_ts để lấy cùng lần chạy)
+
 --- TABLE: olist_order_items ---
 Description: Bảng chi tiết từng sản phẩm trong đơn hàng — 1 đơn hàng có thể có nhiều items
 Columns:
@@ -154,18 +166,21 @@ Columns:
   - prediction_date DATE             — Ngày dự đoán (partition key)
 
 === JOIN RELATIONSHIPS (Data Schema) ===
-  olist_orders.customer_id          → olist_customers.customer_id
-  bronze_rt_orders_sim.customer_id  → olist_customers.customer_id
-  olist_order_items.order_id        → olist_orders.order_id
-  olist_order_items.product_id      → olist_products.product_id
-  olist_order_items.seller_id       → olist_sellers.seller_id
-  olist_order_payments.order_id     → olist_orders.order_id
-  olist_order_reviews.order_id      → olist_orders.order_id
-  olist_products.product_category_name → product_category_name_translation.product_category_name
-  gold_delivery_delay_features.order_id → olist_orders.order_id (dùng khi cần JOIN thêm thông tin đơn hàng)
-  gold_delivery_delay_features.customer_id → olist_customers.customer_id
-  gold_rt_delivery_predictions.order_id → bronze_rt_orders_sim.order_id
-  gold_rt_delivery_predictions.customer_id → olist_customers.customer_id
+  olist_orders.customer_id                   → olist_customers.customer_id
+  bronze_rt_orders_sim.customer_id           → olist_customers.customer_id
+  bronze_rt_order_items_sim.order_id         → bronze_rt_orders_sim.order_id
+  bronze_rt_order_items_sim.seller_id        → olist_sellers.seller_id
+  bronze_rt_order_items_sim.product_id       → olist_products.product_id
+  olist_order_items.order_id                 → olist_orders.order_id
+  olist_order_items.product_id               → olist_products.product_id
+  olist_order_items.seller_id                → olist_sellers.seller_id
+  olist_order_payments.order_id              → olist_orders.order_id
+  olist_order_reviews.order_id               → olist_orders.order_id
+  olist_products.product_category_name       → product_category_name_translation.product_category_name
+  gold_delivery_delay_features.order_id      → olist_orders.order_id (dùng khi cần JOIN thêm thông tin đơn hàng)
+  gold_delivery_delay_features.customer_id   → olist_customers.customer_id
+  gold_rt_delivery_predictions.order_id      → bronze_rt_orders_sim.order_id
+  gold_rt_delivery_predictions.customer_id   → olist_customers.customer_id
 
 === BUSINESS LOGIC & DOMAIN KNOWLEDGE ===
 1. DOANH THU (Revenue):
@@ -1146,7 +1161,7 @@ SELECT order_id, customer_state, estimated_days,
   ROUND(delay_probability * 100, 1) AS delay_pct,
   risk_level
 FROM gold_rt_delivery_predictions
-WHERE prediction_date = CURRENT_DATE()
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
 ORDER BY delay_probability DESC
 LIMIT 10
 
@@ -1157,13 +1172,13 @@ SELECT
   COUNT(*) AS total_predictions,
   ROUND(SUM(CASE WHEN predicted_is_delayed = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS predicted_late_pct
 FROM gold_rt_delivery_predictions
-WHERE prediction_date = CURRENT_DATE()
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
 LIMIT 10
 
 Question: Phân bổ mức nguy cơ giao trễ của đơn hàng mới?
 SELECT risk_level, COUNT(*) AS total_orders
 FROM gold_rt_delivery_predictions
-WHERE prediction_date = CURRENT_DATE()
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
 GROUP BY risk_level
 ORDER BY total_orders DESC
 LIMIT 10
@@ -1174,7 +1189,7 @@ SELECT customer_state,
   SUM(predicted_is_delayed) AS predicted_late,
   ROUND(AVG(delay_probability) * 100, 1) AS avg_delay_pct
 FROM gold_rt_delivery_predictions
-WHERE prediction_date = CURRENT_DATE()
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
 GROUP BY customer_state
 ORDER BY avg_delay_pct DESC
 LIMIT 10
@@ -1186,5 +1201,32 @@ SELECT
   ROUND(MAX(delay_probability) * 100, 1) AS max_delay_pct,
   COUNT(*) AS total_predictions
 FROM gold_rt_delivery_predictions
-WHERE prediction_date = CURRENT_DATE()
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
 LIMIT 10
+
+Question: Đơn hàng mới nào HIGH risk kèm thông tin phí vận chuyển và số sản phẩm?
+SELECT p.order_id, p.customer_state, p.estimated_days,
+  ROUND(p.delay_probability * 100, 1) AS delay_pct,
+  p.risk_level,
+  COUNT(oi.order_item_id) AS item_count,
+  ROUND(SUM(oi.freight_value), 2) AS total_freight,
+  ROUND(AVG(oi.price), 2) AS avg_item_price
+FROM gold_rt_delivery_predictions p
+JOIN bronze_rt_order_items_sim oi ON p.order_id = oi.order_id
+WHERE p.prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+  AND p.risk_level = 'HIGH'
+GROUP BY p.order_id, p.customer_state, p.estimated_days, p.delay_probability, p.risk_level
+ORDER BY p.delay_probability DESC
+LIMIT 10
+
+Question: So sánh xác suất giao trễ dự đoán giữa các bang trong đơn hàng mới?
+SELECT p.customer_state,
+  COUNT(*) AS total_orders,
+  SUM(p.predicted_is_delayed) AS predicted_late,
+  ROUND(AVG(p.delay_probability) * 100, 1) AS avg_delay_pct,
+  SUM(CASE WHEN p.risk_level = 'HIGH' THEN 1 ELSE 0 END) AS high_risk_count
+FROM gold_rt_delivery_predictions p
+WHERE p.prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+GROUP BY p.customer_state
+ORDER BY avg_delay_pct DESC
+LIMIT 30

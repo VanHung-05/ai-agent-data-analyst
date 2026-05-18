@@ -16,6 +16,7 @@ Luồng xử lý:
 
 import asyncio
 import concurrent.futures
+import functools
 import os
 import re
 import threading
@@ -316,9 +317,10 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
             result["visualization_recommendation"] = chart_rec
 
             await _emit_progress(progress_hook, "nlg", "...")
-            result["answer"] = await _run_in_executor(
-                generate_natural_language_answer, question, result["data"], llm
+            nlg_fn = functools.partial(
+                generate_natural_language_answer, question, result["data"], llm, sql=generated_sql
             )
+            result["answer"] = await _run_in_executor(nlg_fn)
             result["error"] = None
 
             if retries > 0:
