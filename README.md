@@ -58,11 +58,11 @@
 
 | # | Agent | File | Chức năng |
 |---|---|---|---|
-| 1 | **Router** | `router_agent.py` | Phân loại intent: `conversation` / `sql` / `visualize`. Dùng LLM scoring + fallback keyword rule-based |
-| 2 | **Conversation** | `conversation_agent.py` | Trả lời chào hỏi, hội thoại chung. Fallback khi SQL pipeline lỗi |
-| 3 | **SQL** | `agent_service.py` | Sinh SQL Spark từ NL, thực thi Databricks, retry self-correction (tối đa 3 lần) |
-| 4 | **Visualize** | `visualize_agent.py` | Đề xuất chart spec (`chart_type`, `x`, `y`, `title`). Heuristic-first, LLM fallback |
-| 5 | **NLG** | `nlg_agent.py` | Diễn giải kết quả thành câu trả lời tự nhiên, giữ đúng số liệu |
+| 1 | **Router** | [`router_agent.py`](backend/services/router_agent.py) | Phân loại intent: `conversation` / `sql` / `visualize`. Dùng LLM scoring + fallback keyword rule-based |
+| 2 | **Conversation** | [`conversation_agent.py`](backend/services/conversation_agent.py) | Trả lời chào hỏi, hội thoại chung. Fallback khi SQL pipeline lỗi |
+| 3 | **SQL** | [`agent_service.py`](backend/services/agent_service.py) | Sinh SQL Spark từ NL, thực thi Databricks, retry self-correction (tối đa 3 lần) |
+| 4 | **Visualize** | [`visualize_agent.py`](backend/services/visualize_agent.py) | Đề xuất chart spec (`chart_type`, `x`, `y`, `title`). Heuristic-first, LLM fallback |
+| 5 | **NLG** | [`nlg_agent.py`](backend/services/nlg_agent.py) | Diễn giải kết quả thành câu trả lời tự nhiên, giữ đúng số liệu |
 
 ---
 
