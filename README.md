@@ -69,24 +69,33 @@
 <a id="-đánh-giá-benchmark"></a>
 ## 📈 Đánh giá (Benchmark)
 
-Hệ thống được đánh giá trên **100 test cases** với 4 chỉ số chuẩn từ bài survey *"From Natural Language to SQL"* (Mohammadjafari et al., 2024):
+Hệ thống được đánh giá trên **100 test cases** phức tạp với 4 chỉ số chuẩn trích từ nghiên cứu khảo sát toàn diện *"From Natural Language to SQL"* (Mohammadjafari et al., 2024):
 
+### 1. Chỉ số hiệu năng
 | Chỉ số | Kết quả | Mô tả |
 |---|---|---|
-| **EX** (Execution Accuracy) ⭐ | **91.0%** | Tỷ lệ SQL sinh ra cho kết quả khớp với Gold SQL |
-| **CM** (Component Match) | **91.5%** | Tỷ lệ clause SQL khớp cấu trúc |
-| **EM** (Exact Match) | **50.0%** | Tỷ lệ khớp chuỗi SQL hoàn toàn |
-| **VES** (Valid Efficiency Score) | **90.4%** | Hiệu năng thực thi so với Gold SQL |
+| **EX** (Execution Accuracy) ⭐ | **91.0%** | Tỷ lệ SQL sinh ra trả về kết quả khớp hoàn toàn với Gold SQL khi thực thi trên Databricks |
+| **CM** (Component Match) | **91.5%** | Tỷ lệ các mệnh đề SQL (SELECT, WHERE, JOIN...) khớp chính xác cấu trúc |
+| **EM** (Exact Match) | **50.0%** | Tỷ lệ khớp từng ký tự chuỗi SQL (rất khắt khe do khác biệt alias/formatting) |
+| **VES** (Valid Efficiency Score) | **90.4%** | Hiệu năng thực thi (tốc độ chạy query) so với phương án tối ưu của Gold SQL |
 
 **Chỉ số bổ sung:**
+* 🟢 **Syntax Pass Rate:** **100%** (Không có câu lệnh nào lỗi cú pháp)
+* 🔵 **Semantic Match Rate:** **92.0%** (AI hiểu đúng ý định nghiệp vụ và chọn đúng bảng/cột ngữ cảnh)
+* 🏆 **Overall Weighted Score:** **96.07%** (Điểm tổng hợp chất lượng toàn diện của hệ thống)
 
-| Chỉ số | Kết quả |
-|---|---|
-| Syntax Pass Rate | **100%** |
-| Semantic Match Rate | **92.0%** |
-| Overall Weighted Score | **96.07%** |
+---
 
-> Chi tiết quá trình tối ưu 12 vòng: [`evaluation/prompt_fix_log.md`](backend/evaluation/prompt_fix_log.md)
+### 2. Tiến trình tối ưu hóa qua 12 Vòng (Prompt Tuning Loop)
+Để đạt được độ chính xác vượt trội, prompt của hệ thống đã được cải tiến liên tục qua **12 vòng lặp kiểm thử và tinh chỉnh**:
+* **Vòng tinh chỉnh nhanh (20 mẫu):** Dùng để debug nhanh các quy tắc định danh (Alias), giới hạn (`LIMIT`), và lỗi logic cơ bản.
+* **Vòng Stress-Test diện rộng (100 mẫu):** Đánh giá toàn diện trên toàn bộ bộ dataset để đảm bảo tính bao quát, chống Overfitting trước khi đóng băng mã nguồn.
+
+#### Biểu đồ tiến trình tối ưu hóa (Tính trên tập Test 100 mẫu):
+
+![Prompt Optimization Journey](docs/evaluation_chart.png)
+
+> 📁 Chi tiết lịch sử phân tích lỗi và nhật ký hành động của từng vòng: [`evaluation/prompt_fix_log.md`](backend/evaluation/prompt_fix_log.md)
 
 ---
 
@@ -100,7 +109,7 @@ Hệ thống được đánh giá trên **100 test cases** với 4 chỉ số ch
 | FastAPI | 0.115 | Web framework + SSE |
 | LangChain | 0.3.0 | SQL chain + LLM orchestration |
 | LangGraph | latest | Multi-agent workflow |
-| Gemini | gemini-2.5-flash | LLM provider (default) |
+| Gemini | gemini-3.1-flash-lite | LLM provider (default) |
 | Databricks SQL | Connector 3.6 | Data warehouse |
 | SQLAlchemy | 2.0.35 | Database abstraction |
 
@@ -192,7 +201,7 @@ npm run dev
 | `DATABRICKS_SCHEMA` | Schema chứa tables | ✅ |
 | `LLM_PROVIDER` | `gemini` hoặc `openai` | ✅ |
 | `GEMINI_API_KEY` | Google Gemini API key | ✅** |
-| `GEMINI_MODEL` | Model name (default: `gemini-2.5-flash`) | |
+| `GEMINI_MODEL` | Model name (default: `gemini-3.1-flash-lite`) | |
 | `SQL_MAX_LIMIT` | Max rows per query (default: 1000) | |
 
 > \* Hoặc dùng `DATABRICKS_TOKEN` (Personal Access Token) thay cho Service Principal  
@@ -233,19 +242,60 @@ npm run dev
 {
   "question": "Top 5 thành phố có nhiều khách hàng nhất?",
   "current_agent": "sql",
-  "answer": "Dựa trên dữ liệu, 5 thành phố có nhiều khách hàng nhất là...",
-  "generated_sql": "SELECT ... FROM ... LIMIT 5",
-  "data": [{"city": "sao paulo", "count": 15540}, ...],
+  "routing_info": {
+    "intent": "sql",
+    "scores": {
+      "conversation": 0,
+      "visualize": 0.1,
+      "sql": 0.9
+    },
+    "selected_agents": [
+      "sql"
+    ],
+    "routing_method": "llm"
+  },
+  "answer": "Chào bạn, dưới đây là 5 thành phố có số lượng khách hàng lớn nhất:\n\n1. **Sao Paulo (SP)**: 14.984 khách hàng\n2. **Rio de Janeiro (RJ)**: 6.620 khách hàng\n3. **Belo Horizonte (MG)**: 2.672 khách hàng\n4. **Brasilia (DF)**: 2.069 khách hàng\n5. **Curitiba (PR)**: 1.465 khách hàng\n\nHy vọng thông tin này hữu ích với bạn!",
+  "generated_sql": "SELECT c.customer_city, c.customer_state, COUNT(DISTINCT c.customer_unique_id) AS total_customers\nFROM olist_customers c\nGROUP BY c.customer_city, c.customer_state\nORDER BY total_customers DESC\nLIMIT 5",
+  "data": [
+    {
+      "customer_city": "sao paulo",
+      "customer_state": "SP",
+      "total_customers": 14984
+    },
+    {
+      "customer_city": "rio de janeiro",
+      "customer_state": "RJ",
+      "total_customers": 6620
+    },
+    {
+      "customer_city": "belo horizonte",
+      "customer_state": "MG",
+      "total_customers": 2672
+    },
+    {
+      "customer_city": "brasilia",
+      "customer_state": "DF",
+      "total_customers": 2069
+    },
+    {
+      "customer_city": "curitiba",
+      "customer_state": "PR",
+      "total_customers": 1465
+    }
+  ],
   "row_count": 5,
   "visualization_recommendation": {
     "chart_type": "bar",
-    "x": "city",
-    "y": "count",
-    "title": "Top 5 thành phố theo số khách hàng"
+    "x": "customer_city",
+    "y": "total_customers",
+    "title": "Top 5 thành phố có nhiều khách hàng nhất",
+    "reason": "User explicitly requested chart type",
+    "routed_agent": "sql"
   },
   "error": null
 }
 ```
+
 
 ---
 
