@@ -106,6 +106,48 @@ class TestAgentService:
         # inline comment strip
         assert _clean_sql_output("SELECT * FROM t -- comment of LLM") == "SELECT * FROM t"
 
+    def test_chart_sql_retry_policy(self):
+        from services.visualize_agent import (
+            needs_chart_sql_retry,
+            parse_recent_days_count,
+            sql_has_wrong_today_only_filter,
+        )
+
+        q = "vẽ biểu đồ đơn hàng 7 ngày gần đây"
+        assert parse_recent_days_count(q) == 7
+        bad_sql = (
+            "SELECT DATE(order_purchase_timestamp + INTERVAL 7 HOURS) AS ngay_vn, COUNT(order_id) "
+            "FROM bronze_rt_orders_sim "
+            "WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP()) "
+            "GROUP BY DATE(order_purchase_timestamp + INTERVAL 7 HOURS) LIMIT 7"
+        )
+        assert sql_has_wrong_today_only_filter(bad_sql) is True
+        good_sql = (
+            "WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= "
+            "DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 6 DAYS)"
+        )
+        assert sql_has_wrong_today_only_filter(good_sql) is False
+
+        should_retry, msg = needs_chart_sql_retry(
+            q,
+            bad_sql,
+            [{"ngay_vn": "2026-05-27", "so_don": 120}],
+            {"chart_type": "table", "reason": "Single-row aggregate → table + NLG answer is sufficient"},
+            route="visualize",
+        )
+        assert should_retry is True
+        assert "INTERVAL 6 DAYS" in msg
+        assert "GROUP BY" in msg
+
+        ok, _ = needs_chart_sql_retry(
+            q,
+            good_sql,
+            [{"ngay_vn": f"2026-05-{20+i}", "so_don": 100 + i} for i in range(7)],
+            {"chart_type": "line", "reason": "Time series detected"},
+            route="visualize",
+        )
+        assert ok is False
+
     def test_recommend_chart(self):
         from services.visualize_agent import recommend_chart
 
@@ -133,7 +175,7 @@ class TestAgentService:
             None,
         )["chart_type"] == "bar"
 
-        # Một dòng KPI → table (heuristic hiện tại)
+        # Một dòng KPI → table (NLG answer đủ rõ, không cần chart)
         assert recommend_chart(
             "tong doanh thu",
             "SELECT sum(price) AS total FROM x",
@@ -159,5 +201,31 @@ class TestAgentService:
         assert res[0]["col_0"] == 1
         assert res[1]["col_1"] == "Bob"
 
-        # Databricks RAW result as single value
+        # datetime.date trong list tuple (GROUP BY ngày)
+        raw_dates = (
+            "[(datetime.date(2026, 5, 22), 120), (datetime.date(2026, 5, 23), 120), "
+            "(datetime.date(2026, 5, 24), 180)]"
+        )
+        res_dates = parse_query_result(raw_dates)
+        assert len(res_dates) == 3
+        assert res_dates[0]["col_0"] == "2026-05-22"
+        assert res_dates[0]["col_1"] == 120
+        assert res_dates[2]["col_1"] == 180
+
+        # Một dòng bọc cả series (nested list)
+        raw_nested = "[[(datetime.date(2026, 5, 22), 120), (datetime.date(2026, 5, 23), 90)]]"
+        res_nested = parse_query_result(raw_nested)
+        assert len(res_nested) == 2
+        assert res_nested[1]["col_1"] == 90
+
+        # Fallback result string chứa series (screenshot UI)
+        raw_wrapped = (
+            "[(datetime.date(2026, 5, 22), 120), (datetime.date(2026, 5, 23), 120)]"
+        )
+        res_wrapped = parse_query_result(raw_wrapped)
+        assert len(res_wrapped) == 2
+
+        # KPI một số — giữ 1 dòng
         assert parse_query_result("42")[0]["result"] == "42"
+        assert len(parse_query_result("[(120,)]")) == 1
+        assert parse_query_result("[{'total': 999}]")[0]["total"] == 999

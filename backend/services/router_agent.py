@@ -26,8 +26,15 @@ _CONVERSATION_KEYWORDS = [
 _VISUALIZE_KEYWORDS = [
     "biểu đồ", "chart", "vẽ", "visualize", "trực quan",
     "plot", "đồ thị", "graph", "hình ảnh hóa", "histogram",
-    "pie chart", "bar chart", "line chart",
+    "pie chart", "bar chart", "line chart", "area chart",
+    "biểu đồ cột", "biểu đồ tròn", "biểu đồ đường", "biểu đồ miền",
 ]
+
+
+def user_wants_visualization(question: str) -> bool:
+    """True khi người dùng yêu cầu vẽ/trực quan hóa (dùng cho retry SQL chart)."""
+    q = question.lower()
+    return any(kw in q for kw in _VISUALIZE_KEYWORDS)
 
 
 def _parse_confidence_scores(raw_output: str) -> dict[str, float]:
@@ -68,15 +75,32 @@ def rule_based_intent(question: str) -> str:
     """
     Fallback: phân loại intent bằng keyword matching.
     Dùng khi LLM router gặp lỗi hoặc trả kết quả không hợp lệ.
+
+    Ưu tiên: visualize > sql-like > conversation (pure greeting).
+    Tránh case "chào, vẽ biểu đồ..." match conversation trước.
     """
     q = question.lower().strip()
     if not q:
         return "conversation"
 
-    if any(kw in q for kw in _CONVERSATION_KEYWORDS):
-        return "conversation"
+    # Visualize luôn ưu tiên cao nhất (user muốn vẽ chart thì phải vẽ)
     if any(kw in q for kw in _VISUALIZE_KEYWORDS):
         return "visualize"
+
+    # SQL keywords: chứa từ khóa truy vấn dữ liệu
+    sql_indicators = [
+        "bao nhiêu", "tổng", "trung bình", "top ", "thống kê",
+        "doanh thu", "đơn hàng", "khách hàng", "sản phẩm",
+        "theo tháng", "theo năm", "theo bang", "liệt kê",
+        "danh mục", "giao trễ", "seller", "review",
+    ]
+    if any(kw in q for kw in sql_indicators):
+        return "sql"
+
+    # Conversation: chỉ khi KHÔNG chứa data/visualize intent
+    if any(kw in q for kw in _CONVERSATION_KEYWORDS):
+        return "conversation"
+
     return "sql"
 
 

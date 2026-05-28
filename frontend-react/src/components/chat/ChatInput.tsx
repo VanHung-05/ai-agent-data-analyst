@@ -101,7 +101,7 @@ const ChatInput: React.FC = () => {
           className="text-center text-xs mt-1.5 hidden sm:block"
           style={{ color: 'var(--text-muted)' }}
         >
-          Enter gửi · Shift+Enter xuống dòng · AI có thể mắc lỗi
+          Enter gửi · Shift+Enter xuống dòng
         </p>
       </div>
     </div>

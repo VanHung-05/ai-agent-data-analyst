@@ -26,8 +26,11 @@ import type { VisualizationRecommendation } from '../../types';
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
+type CellValue = string | number | boolean | null | undefined;
+type DataRow = Record<string, CellValue>;
+
 interface DynamicChartProps {
-  data: Record<string, any>[];
+  data: DataRow[];
   recommendation?: VisualizationRecommendation;
 }
 
@@ -56,7 +59,7 @@ const GRID = { strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.07)' };
 const AXIS = {
   tick: { fill: '#9ca3af', fontSize: 11 },
   axisLine: { stroke: 'rgba(255,255,255,0.12)' },
-  tickLine: false as false,
+  tickLine: false as const,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,16 +67,16 @@ const AXIS = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Ép giá trị về float, trả NaN nếu không thể */
-function toFloat(v: any): number {
+function toFloat(v: CellValue): number {
   if (v === null || v === undefined || v === '') return NaN;
   return typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g, ''));
 }
 
-/** Kiểm tra cột có ≥80% giá trị là số không */
-function isNumericCol(data: Record<string, any>[], col: string): boolean {
+/** Kiểm tra cột có ≥70% giá trị là số không (đồng bộ với backend visualize_agent) */
+function isNumericCol(data: DataRow[], col: string): boolean {
   const vals = data.map((r) => r[col]).filter((v) => v !== null && v !== undefined && v !== '');
   if (!vals.length) return false;
-  return vals.filter((v) => !isNaN(toFloat(v))).length / vals.length >= 0.8;
+  return vals.filter((v) => !isNaN(toFloat(v))).length / vals.length >= 0.7;
 }
 
 function isTimeLike(col: string): boolean {
@@ -88,7 +91,7 @@ function scoreMetric(col: string): number {
 
 /** Trả về [xCol, yCol] tốt nhất từ dữ liệu */
 function resolveAxes(
-  data: Record<string, any>[],
+  data: DataRow[],
   rec: VisualizationRecommendation | undefined,
   chartType: string,
 ): { x: string; y: string } {
@@ -128,9 +131,9 @@ function resolveAxes(
 }
 
 /** Chuẩn hóa data: ép cột numeric về số thực */
-function normalizeData(data: Record<string, any>[], numericCols: string[]): Record<string, any>[] {
+function normalizeData(data: DataRow[], numericCols: string[]): DataRow[] {
   return data.map((row) => {
-    const r = { ...row };
+    const r: DataRow = { ...row };
     for (const c of numericCols) {
       const f = toFloat(r[c]);
       if (!isNaN(f)) r[c] = f;
@@ -141,7 +144,7 @@ function normalizeData(data: Record<string, any>[], numericCols: string[]): Reco
 
 /** Tạo bins cho histogram */
 function buildHistogramBins(
-  data: Record<string, any>[],
+  data: DataRow[],
   col: string,
   binCount = 20,
 ): { bin: string; count: number }[] {
@@ -164,7 +167,7 @@ function buildHistogramBins(
 
 /** Pie: top-N + gộp "Khác" như charts.py (max 8 lát) */
 function buildPieData(
-  data: Record<string, any>[],
+  data: DataRow[],
   xCol: string,
   yCol: string,
   maxSlices = 8,
@@ -184,7 +187,19 @@ function buildPieData(
 // ─────────────────────────────────────────────────────────────────────────────
 // Tooltip
 // ─────────────────────────────────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipPayloadEntry {
+  name?: string;
+  value?: string | number;
+  color?: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayloadEntry[];
+  label?: string | number;
+}
+
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
@@ -194,7 +209,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       {label !== undefined && (
         <p style={{ color: '#9ca3af', marginBottom: 4, fontWeight: 500 }}>{label}</p>
       )}
-      {payload.map((p: any, i: number) => (
+      {payload.map((p, i) => (
         <p key={i} style={{ color: p.color ?? PRIMARY_COLOR, margin: '2px 0' }}>
           {p.name}: <strong>
             {typeof p.value === 'number'
@@ -216,24 +231,41 @@ const yLabel = (v: string) => ({ value: v, angle: -90, position: 'insideLeft' as
 // ─────────────────────────────────────────────────────────────────────────────
 const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => {
   const chartType = (recommendation?.chart_type ?? 'bar').toLowerCase();
+  const shouldRender = !!(data && data.length > 0 && !['table', 'conversation'].includes(chartType));
 
-  // Bỏ qua nếu không cần vẽ
-  if (!data || data.length === 0) return null;
-  if (['table', 'conversation'].includes(chartType)) return null;
+  const cols = shouldRender ? Object.keys(data[0] || {}) : [];
+  const numericCols = useMemo(
+    () => cols.filter((c) => isNumericCol(data, c)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data],
+  );
 
-  const cols = Object.keys(data[0] || {});
-  const numericCols = cols.filter((c) => isNumericCol(data, c));
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const normData = useMemo(() => normalizeData(data, numericCols), [data]);
+  const normData = useMemo(
+    () => (shouldRender ? normalizeData(data, numericCols) : []),
+    [data, numericCols, shouldRender],
+  );
 
-  const { x, y } = resolveAxes(normData, recommendation, chartType);
+  const sortedData = useMemo(() => {
+    if (!shouldRender || normData.length === 0) return normData;
+    const xCol = Object.keys(normData[0] || {}).find(isTimeLike);
+    if (!xCol) return normData;
+    return [...normData].sort((a, b) => {
+      const av = String(a[xCol] ?? '');
+      const bv = String(b[xCol] ?? '');
+      return av.localeCompare(bv);
+    });
+  }, [normData, shouldRender]);
+
+  if (!shouldRender) return null;
+
+  const { x, y } = resolveAxes(sortedData, recommendation, chartType);
   const reason = recommendation?.reason;
   const title = recommendation?.title;
 
   // ── METRIC ───────────────────────────────────────────────────────────────
   if (chartType === 'metric') {
     const label = recommendation?.label ?? title ?? 'Kết quả';
-    const raw = recommendation?.value ?? normData[0]?.[y] ?? normData[0]?.[cols[0]];
+    const raw = recommendation?.value ?? sortedData[0]?.[y] ?? sortedData[0]?.[cols[0]];
     const val = typeof raw === 'number'
       ? raw % 1 === 0 ? raw.toLocaleString() : raw.toLocaleString(undefined, { maximumFractionDigits: 2 })
       : raw;
@@ -253,7 +285,7 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
     const histCol = (recommendation?.y && numericCols.includes(recommendation.y))
       ? recommendation.y
       : numericCols.find((c) => c !== x) ?? numericCols[0] ?? y;
-    const bins = buildHistogramBins(normData, histCol, 20);
+    const bins = buildHistogramBins(sortedData, histCol, 20);
 
     return (
       <ChartWrapper chartType={chartType} title={title} reason={reason}>
@@ -272,15 +304,17 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
 
   // ── PIE ──────────────────────────────────────────────────────────────────
   if (chartType === 'pie') {
-    const pieData = buildPieData(normData, x, y, 8);
+    const pieData = buildPieData(sortedData, x, y, 8);
     const RADIAN = Math.PI / 180;
-    const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-      if (percent < 0.04) return null;
-      const r = innerRadius + (outerRadius - innerRadius) * 0.55;
+    const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: {
+      cx?: number; cy?: number; midAngle?: number; innerRadius?: number; outerRadius?: number; percent?: number;
+    }) => {
+      if (!percent || percent < 0.04) return null;
+      const r = (innerRadius ?? 0) + ((outerRadius ?? 0) - (innerRadius ?? 0)) * 0.55;
       return (
         <text
-          x={cx + r * Math.cos(-midAngle * RADIAN)}
-          y={cy + r * Math.sin(-midAngle * RADIAN)}
+          x={(cx ?? 0) + r * Math.cos(-(midAngle ?? 0) * RADIAN)}
+          y={(cy ?? 0) + r * Math.sin(-(midAngle ?? 0) * RADIAN)}
           fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600}
         >
           {`${(percent * 100).toFixed(1)}%`}
@@ -301,7 +335,13 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
             ))}
           </Pie>
           <Tooltip
-            formatter={(v: any) => typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v}
+            formatter={(v) => {
+              if (typeof v === 'number') {
+                return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+              }
+              if (v == null) return '';
+              return String(v);
+            }}
           />
           <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 16, color: '#9ca3af', fontSize: 12 }} />
         </PieChart>
@@ -313,7 +353,7 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
   if (chartType === 'scatter') {
     // Recharts Scatter cần array {x, y} dạng số
     const xNumeric = numericCols.includes(x);
-    const scatterData = normData
+    const scatterData = sortedData
       .map((r) => ({
         xVal: xNumeric ? toFloat(r[x]) : undefined,
         label: xNumeric ? undefined : String(r[x] ?? ''),
@@ -325,11 +365,11 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
       // Fallback: dùng BarChart khi x không phải số
       return (
         <ChartWrapper chartType="bar" title={title} reason={reason}>
-          <BarChart data={normData} margin={CHART_MARGIN}>
+          <BarChart data={sortedData} margin={CHART_MARGIN}>
             <CartesianGrid {...GRID} />
             <XAxis dataKey={x} {...AXIS} interval={0}
-              angle={normData.length > 10 ? -35 : 0}
-              textAnchor={normData.length > 10 ? 'end' : 'middle'}
+              angle={sortedData.length > 10 ? -35 : 0}
+              textAnchor={sortedData.length > 10 ? 'end' : 'middle'}
               label={xLabel(x)} />
             <YAxis {...AXIS} tickFormatter={(v) => typeof v === 'number' ? v.toLocaleString() : v} label={yLabel(y)} />
             <Tooltip content={<CustomTooltip />} />
@@ -372,12 +412,12 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
   if (chartType === 'line') {
     return (
       <ChartWrapper chartType={chartType} title={title} reason={reason}>
-        <LineChart data={normData} margin={CHART_MARGIN}>
+        <LineChart data={sortedData} margin={CHART_MARGIN}>
           <CartesianGrid {...GRID} />
           <XAxis dataKey={x} {...AXIS}
-            interval={normData.length > 12 ? Math.floor(normData.length / 12) : 0}
-            angle={normData.length > 12 ? -35 : 0}
-            textAnchor={normData.length > 12 ? 'end' : 'middle'}
+            interval={sortedData.length > 12 ? Math.floor(sortedData.length / 12) : 0}
+            angle={sortedData.length > 12 ? -35 : 0}
+            textAnchor={sortedData.length > 12 ? 'end' : 'middle'}
             label={xLabel(x)} />
           <YAxis {...AXIS} tickFormatter={(v) => typeof v === 'number' ? v.toLocaleString() : v} label={yLabel(y)} />
           <Tooltip content={<CustomTooltip />} />
@@ -393,7 +433,7 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
   if (chartType === 'area') {
     return (
       <ChartWrapper chartType={chartType} title={title} reason={reason}>
-        <AreaChart data={normData} margin={CHART_MARGIN}>
+        <AreaChart data={sortedData} margin={CHART_MARGIN}>
           <defs>
             <linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={PRIMARY_COLOR} stopOpacity={0.35} />
@@ -402,9 +442,9 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
           </defs>
           <CartesianGrid {...GRID} />
           <XAxis dataKey={x} {...AXIS}
-            interval={normData.length > 12 ? Math.floor(normData.length / 12) : 0}
-            angle={normData.length > 12 ? -35 : 0}
-            textAnchor={normData.length > 12 ? 'end' : 'middle'}
+            interval={sortedData.length > 12 ? Math.floor(sortedData.length / 12) : 0}
+            angle={sortedData.length > 12 ? -35 : 0}
+            textAnchor={sortedData.length > 12 ? 'end' : 'middle'}
             label={xLabel(x)} />
           <YAxis {...AXIS} tickFormatter={(v) => typeof v === 'number' ? v.toLocaleString() : v} label={yLabel(y)} />
           <Tooltip content={<CustomTooltip />} />
@@ -416,10 +456,10 @@ const DynamicChart: React.FC<DynamicChartProps> = ({ data, recommendation }) => 
   }
 
   // ── BAR (default) ────────────────────────────────────────────────────────
-  const rotateX = normData.length > 8;
+  const rotateX = sortedData.length > 8;
   return (
     <ChartWrapper chartType={chartType} title={title} reason={reason}>
-      <BarChart data={normData} margin={CHART_MARGIN}>
+      <BarChart data={sortedData} margin={CHART_MARGIN}>
         <CartesianGrid {...GRID} />
         <XAxis dataKey={x} {...AXIS}
           interval={0}

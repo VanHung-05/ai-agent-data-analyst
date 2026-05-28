@@ -427,6 +427,13 @@ Columns:
     -- Ngày hôm qua (giờ VN):
     DATE(col + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY)
 
+    -- Cửa sổ N ngày gần đây (gồm hôm nay, giờ VN) — dùng cho "7 ngày", "30 ngày", biểu đồ theo ngày:
+    DATE(col + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL (N-1) DAYS)
+    Ví dụ N=7 → ... - INTERVAL 6 DAYS (7 ngày: hôm nay + 6 ngày trước).
+    Khi cần 1 dòng/ngày → GROUP BY DATE(col + INTERVAL 7 HOURS) AS ngay_vn, ORDER BY ngay_vn ASC.
+    TUYỆT ĐỐI KHÔNG dùng WHERE DATE(col + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP())
+    (không +7h, chỉ lấy từ hôm nay UTC → sai, thường chỉ 1 dòng, không vẽ được biểu đồ nhiều ngày).
+
     -- Giờ trong ngày (giờ VN, không phải UTC):
     HOUR(col + INTERVAL 7 HOURS) AS gio_vn
 
@@ -565,6 +572,30 @@ WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAM
 GROUP BY ngay
 ORDER BY ngay DESC
 LIMIT 3
+
+Question: Vẽ biểu đồ đơn hàng 7 ngày gần đây / Số đơn theo từng ngày trong 7 ngày qua / Xu hướng đơn hàng tuần này?
+SELECT DATE(order_purchase_timestamp + INTERVAL 7 HOURS) AS ngay_vn, COUNT(order_id) AS so_don
+FROM bronze_rt_orders_sim
+WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 6 DAYS)
+GROUP BY DATE(order_purchase_timestamp + INTERVAL 7 HOURS)
+ORDER BY ngay_vn ASC
+LIMIT 7
+
+Question: Vẽ biểu đồ doanh thu theo từng tháng / Xu hướng doanh thu 12 tháng (dữ liệu lịch sử)?
+SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS thang, SUM(oi.price) AS monthly_revenue
+FROM olist_order_items oi
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')
+ORDER BY thang ASC
+LIMIT 30
+
+Question: Số đơn hàng theo từng năm (lịch sử)?
+SELECT year(o.order_purchase_timestamp) AS yr, COUNT(DISTINCT o.order_id) AS total_orders
+FROM olist_orders o
+GROUP BY year(o.order_purchase_timestamp)
+ORDER BY yr ASC
+LIMIT 10
 
 Question: Tổng doanh thu là bao nhiêu?
 SELECT SUM(oi.price) AS total_revenue

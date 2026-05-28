@@ -123,10 +123,17 @@ async function processQueue() {
                   status: 'success',
                 });
               } else if (event.type === 'error') {
-                throw new Error(event.error);
+                const errorMsg = event.error || 'Đã xảy ra lỗi không xác định.';
+                setError(errorMsg);
+                updateMessage(assistantId, {
+                  status: 'error',
+                  error: errorMsg,
+                  content: 'Có lỗi xảy ra khi xử lý câu hỏi của bạn.',
+                });
+                break;
               } else if (event.type === 'done') {
                 updateMessage(assistantId, {
-                  status: 'success',
+                  status: accumulatedText ? 'success' : 'error',
                 });
                 break;
               }

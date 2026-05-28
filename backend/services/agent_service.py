@@ -35,7 +35,7 @@ from services.llm_service import get_llm
 from services.query_result_parser import parse_query_result
 from services.router_agent import route_detail
 from services.nlg_agent import generate_natural_language_answer
-from services.visualize_agent import recommend_chart
+from services.visualize_agent import needs_chart_sql_retry, recommend_chart
 from utils.sql_validator import (
     WRITE_REQUEST_REFUSAL_VI,
     is_natural_language_write_request,
@@ -99,11 +99,13 @@ def _load_system_prompt() -> str:
 
 
 # ====== ASYNC HELPER ======
+_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+
+
 async def _run_in_executor(func: Any, *args: Any) -> Any:
-    """Chạy hàm blocking trong thread pool."""
+    """Chạy hàm blocking trong thread pool singleton (tránh tạo/hủy pool mỗi call)."""
     loop = asyncio.get_event_loop()
-    with concurrent.futures.ThreadPoolExecutor() as pool:
-        return await loop.run_in_executor(pool, lambda: func(*args))
+    return await loop.run_in_executor(_THREAD_POOL, lambda: func(*args))
 
 
 async def _emit_progress(
@@ -132,16 +134,38 @@ def _extract_select_aliases(sql: str) -> list[str]:
     """
     Trích tên cột từ SELECT list để thay `col_0`, `col_1` thành tên có nghĩa.
     Ưu tiên alias sau AS; nếu không có thì lấy token cuối của expression.
+
+    Handle: subquery trong SELECT, CASE WHEN, nested parentheses.
     """
-    m = re.search(r"\bselect\b(.*?)\bfrom\b", sql, flags=re.IGNORECASE | re.DOTALL)
-    if not m:
+    # Tìm SELECT ... FROM ở ngoài cùng (bỏ qua subquery SELECT bên trong parens)
+    sql_upper = sql.upper()
+    select_pos = -1
+    from_pos = -1
+    depth = 0
+
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth = max(0, depth - 1)
+        elif depth == 0:
+            if select_pos == -1 and sql_upper[i:i+6] == 'SELECT':
+                select_pos = i + 6
+            elif select_pos != -1 and from_pos == -1 and sql_upper[i:i+4] == 'FROM':
+                from_pos = i
+                break
+        i += 1
+
+    if select_pos == -1 or from_pos == -1:
         return []
 
-    select_part = m.group(1).strip()
+    select_part = sql[select_pos:from_pos].strip()
     if not select_part:
         return []
 
-    # Tách theo dấu phẩy ở level ngoài cùng (không tách trong hàm)
+    # Tách theo dấu phẩy ở level ngoài cùng (không tách trong hàm/subquery/CASE)
     parts: list[str] = []
     buf: list[str] = []
     depth = 0
@@ -316,6 +340,28 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
             chart_rec["routed_agent"] = route
             result["visualization_recommendation"] = chart_rec
 
+            chart_retry_check = functools.partial(
+                needs_chart_sql_retry,
+                question,
+                generated_sql,
+                result["data"],
+                chart_rec,
+                route=route,
+            )
+            should_retry_chart, chart_retry_msg = await _run_in_executor(chart_retry_check)
+            if should_retry_chart:
+                retries += 1
+                last_error_str = chart_retry_msg
+                logger.warning(
+                    "Dữ liệu không đủ cho biểu đồ (thử %s/%s)",
+                    retries,
+                    max_retries,
+                )
+                if retries < max_retries:
+                    await _emit_progress(progress_hook, "sql_generate", "...")
+                    await asyncio.sleep(1)
+                    continue
+
             await _emit_progress(progress_hook, "nlg", "...")
             nlg_fn = functools.partial(
                 generate_natural_language_answer, question, result["data"], llm, sql=generated_sql
@@ -353,7 +399,13 @@ async def _node_sql_pipeline(state: WorkflowState) -> WorkflowState:
 
 
 def _next_after_router(state: WorkflowState) -> str:
-    """Router edge: chọn node tiếp theo theo intent."""
+    """
+    Router edge: chọn node tiếp theo theo intent.
+
+    NOTE: Cả intent "sql" lẫn "visualize" đều dùng chung sql_pipeline node.
+    Visualize chỉ khác ở metadata (route tag) → recommend_chart ưu tiên vẽ chart hơn.
+    Thiết kế này có chủ đích: mọi visualization đều cần query data trước.
+    """
     route = state.get("route", "conversation")
     return "conversation" if route == "conversation" else "sql_pipeline"
 
