@@ -20,13 +20,12 @@ _SUPPORTED_CHART_TYPES = {
 }
 
 _CHART_KEYWORDS = {
-    "line": ["line chart", "line", "đường", "xu hướng", "trend", "over time"],
-    "bar": ["bar chart", "bar", "cột", "so sánh", "ranking", "xếp hạng", "top"],
-    # Không map "tỷ lệ/phần trăm" → ép pie: thường là 1 dòng KPI (late/total/%) → pie sai 100%
-    "pie": ["pie chart", "pie", "biểu đồ tròn", "chart tròn"],
-    "scatter": ["scatter", "phân tán", "correlation", "tương quan"],
-    "histogram": ["histogram", "phân bố", "distribution", "tần suất"],
-    "area": ["area chart", "area", "miền"],
+    "line": ["line chart", "biểu đồ đường", "biểu đồ line", "vẽ line", "xu hướng", "trend", "over time"],
+    "bar": ["bar chart", "biểu đồ cột", "biểu đồ bar", "vẽ bar", "so sánh", "ranking", "xếp hạng"],
+    "pie": ["pie chart", "biểu đồ tròn", "biểu đồ pie", "vẽ pie", "chart tròn"],
+    "scatter": ["scatter", "biểu đồ phân tán", "correlation", "tương quan"],
+    "histogram": ["histogram", "biểu đồ phân bố", "distribution", "phân bố tần suất"],
+    "area": ["area chart", "biểu đồ miền", "biểu đồ area", "vẽ area"],
 }
 
 
@@ -65,7 +64,6 @@ def recommend_chart(
 
     # === Không vẽ chart khi x-axis là UUID/hash và không có cột thay thế ===
     if x_col and _is_id_column(x_col, data):
-        # Thử tìm cột khác làm x-axis thay thế
         alt_x = _find_non_id_x(data, columns, x_col)
         if alt_x:
             x_col = alt_x
@@ -78,7 +76,17 @@ def recommend_chart(
                 "reason": f"x-axis '{x_col}' is an ID/hash column — chart would be unreadable",
             }
 
-    # === Ưu tiên: không vẽ khi dữ liệu không đủ ý nghĩa cho chart ===
+    # === Single-row KPI → table + NLG đủ rõ, không cần chart/card ===
+    if row_count == 1:
+        return {
+            "chart_type": "table",
+            "x": None,
+            "y": None,
+            "title": None,
+            "reason": "Single-row aggregate → table + NLG answer is sufficient",
+        }
+
+    # === Single-column (multi-row) → table ===
     if len(columns) <= 1:
         return {
             "chart_type": "table",
@@ -86,15 +94,6 @@ def recommend_chart(
             "y": None,
             "title": None,
             "reason": "Single-column result → table is clearer",
-        }
-
-    if row_count <= 1:
-        return {
-            "chart_type": "table",
-            "x": None,
-            "y": None,
-            "title": None,
-            "reason": "Single-row aggregate (KPI) → text/NLG + table, not chart",
         }
 
     # Người dùng chỉ định loại biểu đồ — chỉ áp dụng nếu dữ liệu khớp
@@ -107,6 +106,17 @@ def recommend_chart(
         if ok:
             spec["reason"] = "User explicitly requested chart type"
             return spec
+
+    # === Câu hỏi tìm cực trị ("nhất") → table, không cần chart ===
+    # Phải check TRƯỚC rate/pie để tránh "tỷ lệ cao nhất" bị route sai vào pie
+    if _is_superlative_question(q):
+        return {
+            "chart_type": "table",
+            "x": None,
+            "y": None,
+            "title": None,
+            "reason": "Superlative question (nhất/most/least) — table + NLG answer is sufficient",
+        }
 
     # === HEURISTIC: các case rõ ràng ===
 
@@ -122,12 +132,33 @@ def recommend_chart(
                 spec["reason"] = "Time series detected"
                 return spec
 
-    # Pie: tỉ lệ / phần trăm / proportion — ưu tiên trước bar/ranking
+    # Rate/Percentage BY GROUP → bar chart (không phải pie)
+    rate_kws = [
+        "tỉ lệ", "tỷ lệ", "phần trăm", "ratio", "percentage", "rate",
+    ]
+    group_kws = [
+        "theo", "từng", "mỗi", "by", "per", "each",
+        "bang", "state", "danh mục", "category", "seller", "tháng", "month",
+    ]
+    is_rate_question = any(kw in q for kw in rate_kws)
+    is_grouped = any(kw in q for kw in group_kws)
+
+    if is_rate_question and is_grouped and row_count >= 2:
+        pct_col = _find_pct_column(columns)
+        bar_y = pct_col or y_col
+        spec = _build_chart_spec("bar", question, x_col, bar_y)
+        ok, _why = _validate_chart_for_data(
+            "bar", data, columns, spec.get("x"), spec.get("y")
+        )
+        if ok:
+            spec["reason"] = "Rate/percentage comparison across groups → bar chart"
+            return spec
+
+    # Pie: phân bổ / cơ cấu / proportion — parts of a whole
     pie_kws = [
-        "tỉ lệ", "tỷ lệ", "phần trăm", "ratio", "percentage",
         "proportion", "share", "cơ cấu", "phân bổ",
     ]
-    if any(kw in q for kw in pie_kws):
+    if any(kw in q for kw in pie_kws) or (is_rate_question and not is_grouped):
         if len(columns) >= 2 and row_count >= 2:
             spec = _build_chart_spec("pie", question, x_col, y_col)
             ok, _why = _validate_chart_for_data(
@@ -137,19 +168,7 @@ def recommend_chart(
                 spec["reason"] = "Proportions/ratio with multiple categories"
                 return spec
 
-    # === Câu hỏi tìm cực trị ("nhất") → bảng đủ, không cần chart ===
-    # Ví dụ: "cao nhất", "nhiều nhất", "lớn nhất", "thấp nhất"...
-    # Ngoại lệ: user đã chỉ định chart type ở trên (forced_chart) hoặc có "top N so sánh"
-    if _is_superlative_question(q):
-        return {
-            "chart_type": "table",
-            "x": None,
-            "y": None,
-            "title": None,
-            "reason": "Superlative question (nhất/most/least) — table + NLG answer is sufficient",
-        }
-
-    if any(kw in q for kw in ["top", "so sánh", "ranking", "xếp hạng", "comparison", "liệt kê"]):
+    if any(kw in q for kw in ["top ", "top-", "so sánh", "ranking", "xếp hạng", "comparison"]):
         if len(columns) >= 2:
             spec = _build_chart_spec("bar", question, x_col, y_col)
             ok, _why = _validate_chart_for_data(
@@ -399,6 +418,12 @@ def _choose_axes(data: list[dict], columns: list[str]) -> tuple[str | None, str 
 
     x_candidates = non_id_non_numeric if non_id_non_numeric else non_numeric_cols
 
+    # Ưu tiên cột _pct/_rate làm y-axis (metric chính user quan tâm)
+    pct_col = _find_pct_column(numeric_cols)
+    preferred_y = pct_col if pct_col else (numeric_cols[0] if numeric_cols else None)
+
+    if x_candidates and preferred_y:
+        return x_candidates[0], preferred_y
     if x_candidates and numeric_cols:
         return x_candidates[0], numeric_cols[0]
     if non_numeric_cols and numeric_cols:
@@ -408,6 +433,16 @@ def _choose_axes(data: list[dict], columns: list[str]) -> tuple[str | None, str 
     if len(columns) >= 2:
         return columns[0], columns[1]
     return columns[0], columns[0]
+
+
+def _find_pct_column(columns: list[str]) -> str | None:
+    """Tìm cột tỷ lệ/phần trăm trong danh sách cột (ưu tiên làm y-axis)."""
+    pct_suffixes = ["_pct", "_rate", "_percentage", "_ratio", "late_pct", "cancel_rate"]
+    for col in columns:
+        col_lower = col.lower()
+        if any(col_lower.endswith(s) or col_lower == s for s in pct_suffixes):
+            return col
+    return None
 
 
 def _find_non_id_x(data: list[dict], columns: list[str], current_x: str) -> str | None:
@@ -433,3 +468,105 @@ def _suggest_title(question: str, chart_type: str) -> str:
     if not q:
         return f"{chart_type.title()} chart"
     return q[:120]
+
+
+_MULTI_POINT_CHART_KEYWORDS = [
+    "theo ngày", "mỗi ngày", "từng ngày", "theo tháng", "xu hướng", "trend",
+    "over time", "theo thời gian", "gần đây", "ngày gần", "tuần qua", "tuần này",
+]
+
+
+def parse_recent_days_count(question: str) -> int | None:
+    """Trích N từ '7 ngày', '30 ngày gần đây', ..."""
+    q = question.lower()
+    for pattern in (r"(\d+)\s*ngày", r"(\d+)\s*days?"):
+        m = re.search(pattern, q)
+        if m:
+            n = int(m.group(1))
+            if n >= 2:
+                return n
+    return None
+
+
+def sql_has_wrong_today_only_filter(sql: str) -> bool:
+    """
+    Phát hiện filter >= DATE(CURRENT_TIMESTAMP()) không +7h VN — thường chỉ trả 1 ngày.
+    """
+    if not re.search(
+        r">=\s*DATE\s*\(\s*CURRENT_TIMESTAMP\s*\(\s*\)\s*\)",
+        sql,
+        re.IGNORECASE,
+    ):
+        return False
+    return not re.search(
+        r"CURRENT_TIMESTAMP\s*\(\s*\)\s*\+\s*INTERVAL\s+7\s+HOURS",
+        sql,
+        re.IGNORECASE,
+    )
+
+
+def needs_chart_sql_retry(
+    question: str,
+    sql: str,
+    data: list[dict],
+    chart_rec: dict,
+    *,
+    route: str = "sql",
+) -> tuple[bool, str]:
+    """
+    True khi SQL/kết quả sai logic time-window hoặc không đủ điểm cho biểu đồ — nên sinh lại SQL.
+
+    Kích hoạt retry khi:
+    1. User muốn visualize nhưng data chỉ 1 dòng (cần series)
+    2. Câu hỏi có "N ngày" nhưng SQL dùng sai timezone filter (bất kể route)
+    """
+    from services.router_agent import user_wants_visualization
+
+    row_count = len(data)
+    n_days = parse_recent_days_count(question)
+    q_lower = question.lower()
+    expects_series = (
+        n_days is not None
+        or any(kw in q_lower for kw in _MULTI_POINT_CHART_KEYWORDS)
+    )
+
+    wants_chart = user_wants_visualization(question) or route == "visualize"
+
+    reasons: list[str] = []
+
+    # Case 1: Wrong timezone filter cho time-window query (bất kể route)
+    if expects_series and sql_has_wrong_today_only_filter(sql):
+        reasons.append(
+            "SQL dùng >= DATE(CURRENT_TIMESTAMP()) không +7h — sai cho cửa sổ nhiều ngày."
+        )
+
+    # Case 2: Muốn chart nhưng data không đủ điểm
+    if wants_chart:
+        if expects_series and row_count < 2:
+            reasons.append(
+                f"Kết quả chỉ có {row_count} dòng nhưng câu hỏi cần nhiều điểm (theo ngày/biểu đồ)."
+            )
+        if chart_rec.get("chart_type") == "table" and "Single-row" in (chart_rec.get("reason") or ""):
+            reasons.append("Heuristic: một dòng KPI — không đủ để vẽ biểu đồ.")
+
+    # Case 3: Hỏi N ngày nhưng kết quả ít hơn N (thiếu ngày)
+    if n_days and row_count < n_days and sql_has_wrong_today_only_filter(sql):
+        if not any("không +7h" in r for r in reasons):
+            reasons.append(
+                f"Câu hỏi cần {n_days} ngày nhưng chỉ trả về {row_count} dòng — filter sai."
+            )
+
+    if not reasons:
+        return False, ""
+
+    n_hint = n_days if n_days else 7
+    interval_days = max(n_hint - 1, 1)
+    retry_msg = (
+        "LỖI LOGIC TRUY VẤN (cần SQL mới):\n"
+        + "\n".join(f"- {r}" for r in reasons)
+        + f"\n- Với {n_hint} ngày gần đây (realtime): "
+        f"WHERE DATE(col + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL {interval_days} DAYS)"
+        "\n- GROUP BY DATE(col + INTERVAL 7 HOURS) AS ngay_vn; ORDER BY ngay_vn ASC."
+        f"\n- SQL trước đó:\n{sql.strip()}"
+    )
+    return True, retry_msg

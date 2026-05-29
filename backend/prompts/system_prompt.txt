@@ -46,6 +46,18 @@ Columns:
   - order_estimated_delivery_date TIMESTAMP — Ngày giao hàng dự kiến
   - ingest_run_ts TIMESTAMP                — Thời điểm nạp dữ liệu
 
+--- TABLE: bronze_rt_order_items_sim ---
+Description: Bảng chi tiết sản phẩm trong đơn hàng giả lập thời gian thực. Là bảng con của bronze_rt_orders_sim — 1 đơn hàng có thể có nhiều items. Dùng khi cần phân tích phí vận chuyển, giá sản phẩm, hoặc số lượng item của đơn hàng realtime.
+Columns:
+  - order_id STRING                    — FK → bronze_rt_orders_sim.order_id
+  - order_item_id INT                  — Số thứ tự item trong đơn (1, 2, 3...)
+  - product_id STRING                  — FK → olist_products.product_id
+  - seller_id STRING                   — FK → olist_sellers.seller_id
+  - shipping_limit_date TIMESTAMP      — Hạn chót seller giao cho carrier
+  - price DECIMAL(10,2)                — Giá bán sản phẩm (BRL)
+  - freight_value DECIMAL(10,2)        — Phí vận chuyển của item (BRL)
+  - ingest_run_ts TIMESTAMP            — Thời điểm nạp dữ liệu (JOIN với bronze_rt_orders_sim.ingest_run_ts để lấy cùng lần chạy)
+
 --- TABLE: olist_order_items ---
 Description: Bảng chi tiết từng sản phẩm trong đơn hàng — 1 đơn hàng có thể có nhiều items
 Columns:
@@ -105,15 +117,70 @@ Columns:
   - product_category_name STRING              — Tên tiếng Bồ Đào Nha (JOIN key)
   - product_category_name_english STRING      — Tên tiếng Anh
 
+--- TABLE: gold_delivery_delay_features ---
+Description: Bảng Gold (đã xử lý sẵn bằng ETL) chứa đặc trưng về thời gian giao hàng và dự đoán giao trễ.
+QUAN TRỌNG: Khi người dùng hỏi về "giao trễ", "tỷ lệ trễ", "thời gian giao hàng", "delay", "trễ theo bang", "trễ theo danh mục" → ƯU TIÊN dùng bảng này thay vì tính toán thủ công từ olist_orders.
+Bảng này CHƯA có thông tin danh mục sản phẩm — nếu câu hỏi cần GROUP BY category thì vẫn phải JOIN qua olist_order_items + olist_products + product_category_name_translation.
+Columns:
+  - order_id STRING                   — Khóa chính, liên kết với olist_orders.order_id
+  - customer_id STRING                — FK → olist_customers.customer_id
+  - customer_state STRING             — Bang của khách hàng (2 ký tự)
+  - seller_state STRING               — Bang của người bán (2 ký tự, hoặc 'MULTI' nếu đơn hàng có nhiều seller từ nhiều bang)
+  - is_delayed INT                    — 1 = Giao trễ (delivered > estimated), 0 = Đúng hạn
+  - delivery_days INT                 — Số ngày từ lúc đặt đến lúc giao (purchase → delivered)
+  - estimated_days INT                — Số ngày giao dự kiến (purchase → estimated)
+  - delay_days INT                    — Số ngày trễ (delivered - estimated). Dương = trễ, Âm = giao sớm
+  - item_count INT                    — Số lượng sản phẩm trong đơn
+  - total_freight DECIMAL(12,2)       — Tổng phí vận chuyển (BRL)
+  - avg_item_price DECIMAL(12,2)      — Giá bán trung bình mỗi item (BRL)
+  - created_at TIMESTAMP             — Thời điểm tạo bản ghi
+  - updated_at TIMESTAMP             — Thời điểm cập nhật
+  - pipeline_run_id STRING           — ID của lần chạy ETL pipeline
+  - ingestion_date DATE              — Ngày nạp dữ liệu (partition key)
+
+--- TABLE: delivery_delay_dq_log ---
+Description: Bảng log kết quả Data Quality checks của pipeline giao trễ. Dùng để kiểm tra trạng thái pipeline.
+Columns:
+  - run_id STRING                    — ID lần chạy DQ check
+  - ingest_ts TIMESTAMP             — Thời điểm chạy
+  - row_count BIGINT                 — Tổng số dòng trong bảng Gold tại thời điểm check
+  - dq_status STRING                 — 'PASS' hoặc 'FAIL'
+  - invalid_delivery_days BIGINT     — Số dòng có delivery_days < 0
+  - invalid_estimated_days BIGINT    — Số dòng có estimated_days < 0
+  - null_critical_cols BIGINT        — Số dòng có cột quan trọng bị NULL
+
+--- TABLE: gold_rt_delivery_predictions ---
+Description: Bảng dự đoán giao trễ cho đơn hàng MỚI từ bronze_rt_orders_sim. Model Random Forest train trên dữ liệu lịch sử, dự đoán xác suất giao trễ.
+QUAN TRỌNG: Khi user hỏi "đơn hàng mới nào có nguy cơ giao trễ?", "dự đoán giao trễ", "risk level", "xác suất trễ" → dùng bảng này.
+Columns:
+  - order_id STRING                   — Khóa chính, liên kết với bronze_rt_orders_sim.order_id
+  - customer_id STRING                — FK → olist_customers.customer_id
+  - order_status STRING               — Trạng thái đơn hàng hiện tại
+  - customer_state STRING             — Bang khách hàng
+  - estimated_days INT                — Số ngày giao dự kiến
+  - predicted_is_delayed INT          — Dự đoán: 1 = Sẽ giao trễ, 0 = Đúng hạn
+  - delay_probability DOUBLE          — Xác suất giao trễ (0.0 → 1.0)
+  - risk_level STRING                 — Mức nguy cơ: 'LOW' (< 30%), 'MEDIUM' (30-60%), 'HIGH' (> 60%)
+  - predicted_at TIMESTAMP           — Thời điểm chạy dự đoán
+  - model_version STRING             — Phiên bản model (vd: rf_v1)
+  - prediction_date DATE             — Ngày dự đoán (partition key)
+
 === JOIN RELATIONSHIPS (Data Schema) ===
-  olist_orders.customer_id          → olist_customers.customer_id
-  bronze_rt_orders_sim.customer_id  → olist_customers.customer_id
-  olist_order_items.order_id        → olist_orders.order_id
-  olist_order_items.product_id      → olist_products.product_id
-  olist_order_items.seller_id       → olist_sellers.seller_id
-  olist_order_payments.order_id     → olist_orders.order_id
-  olist_order_reviews.order_id      → olist_orders.order_id
-  olist_products.product_category_name → product_category_name_translation.product_category_name
+  olist_orders.customer_id                   → olist_customers.customer_id
+  bronze_rt_orders_sim.customer_id           → olist_customers.customer_id
+  bronze_rt_order_items_sim.order_id         → bronze_rt_orders_sim.order_id
+  bronze_rt_order_items_sim.seller_id        → olist_sellers.seller_id
+  bronze_rt_order_items_sim.product_id       → olist_products.product_id
+  olist_order_items.order_id                 → olist_orders.order_id
+  olist_order_items.product_id               → olist_products.product_id
+  olist_order_items.seller_id                → olist_sellers.seller_id
+  olist_order_payments.order_id              → olist_orders.order_id
+  olist_order_reviews.order_id               → olist_orders.order_id
+  olist_products.product_category_name       → product_category_name_translation.product_category_name
+  gold_delivery_delay_features.order_id      → olist_orders.order_id (dùng khi cần JOIN thêm thông tin đơn hàng)
+  gold_delivery_delay_features.customer_id   → olist_customers.customer_id
+  gold_rt_delivery_predictions.order_id      → bronze_rt_orders_sim.order_id
+  gold_rt_delivery_predictions.customer_id   → olist_customers.customer_id
 
 === BUSINESS LOGIC & DOMAIN KNOWLEDGE ===
 1. DOANH THU (Revenue):
@@ -134,6 +201,12 @@ Columns:
    - Thời gian giao hàng thực tế = order_delivered_customer_date - order_purchase_timestamp
    - Giao trễ = order_delivered_customer_date > order_estimated_delivery_date
    - Giao sớm = order_delivered_customer_date < order_estimated_delivery_date
+   *** QUAN TRỌNG — GOLD TABLE RULE: ***
+   Khi câu hỏi liên quan đến giao trễ / delivery delay / tỷ lệ trễ / thời gian giao hàng trung bình / phân tích delay:
+   → ƯU TIÊN query trực tiếp từ bảng `gold_delivery_delay_features` (đã được ETL xử lý sẵn, dữ liệu sạch).
+   → CHỈ tính thủ công từ olist_orders khi câu hỏi CẦN JOIN thêm bảng KHÔNG có trong Gold (vd: danh mục sản phẩm, thanh toán, đánh giá).
+   → Bảng Gold đã có sẵn: is_delayed, delivery_days, estimated_days, delay_days, customer_state, seller_state, item_count, total_freight, avg_item_price.
+   → Bảng `delivery_delay_dq_log` dùng khi user hỏi về trạng thái pipeline / DQ check / ETL có chạy thành công không.
 
 4. ĐÁNH GIÁ (Reviews):
    - review_score: 1=rất tệ, 2=tệ, 3=trung bình, 4=tốt, 5=rất tốt
@@ -354,6 +427,13 @@ Columns:
     -- Ngày hôm qua (giờ VN):
     DATE(col + INTERVAL 7 HOURS) = DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 1 DAY)
 
+    -- Cửa sổ N ngày gần đây (gồm hôm nay, giờ VN) — dùng cho "7 ngày", "30 ngày", biểu đồ theo ngày:
+    DATE(col + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL (N-1) DAYS)
+    Ví dụ N=7 → ... - INTERVAL 6 DAYS (7 ngày: hôm nay + 6 ngày trước).
+    Khi cần 1 dòng/ngày → GROUP BY DATE(col + INTERVAL 7 HOURS) AS ngay_vn, ORDER BY ngay_vn ASC.
+    TUYỆT ĐỐI KHÔNG dùng WHERE DATE(col + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP())
+    (không +7h, chỉ lấy từ hôm nay UTC → sai, thường chỉ 1 dòng, không vẽ được biểu đồ nhiều ngày).
+
     -- Giờ trong ngày (giờ VN, không phải UTC):
     HOUR(col + INTERVAL 7 HOURS) AS gio_vn
 
@@ -394,7 +474,9 @@ Understand questions in Vietnamese, English, and Portuguese:
   - "vận chuyển" / "shipping" / "frete" = freight_value
   - "trả góp" / "installments" / "parcelas" = payment_installments
   - "bán chạy" = top selling (by SUM of price or COUNT of items)
-  - "giao trễ" / "late delivery" = delivered_date > estimated_date
+  - "giao trễ" / "late delivery" = dùng bảng gold_delivery_delay_features (is_delayed = 1)
+  - "thời gian giao hàng" / "delivery time" = dùng delivery_days từ gold_delivery_delay_features
+  - "pipeline" / "DQ" / "data quality" / "ETL" = dùng bảng delivery_delay_dq_log
   - "theo tháng" / "monthly" = GROUP BY month
   - "theo bang" / "by state" = GROUP BY customer_state or seller_state
   - "danh mục" / "category" = product_category_name (Portuguese) hoặc JOIN translation
@@ -490,6 +572,30 @@ WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAM
 GROUP BY ngay
 ORDER BY ngay DESC
 LIMIT 3
+
+Question: Vẽ biểu đồ đơn hàng 7 ngày gần đây / Số đơn theo từng ngày trong 7 ngày qua / Xu hướng đơn hàng tuần này?
+SELECT DATE(order_purchase_timestamp + INTERVAL 7 HOURS) AS ngay_vn, COUNT(order_id) AS so_don
+FROM bronze_rt_orders_sim
+WHERE DATE(order_purchase_timestamp + INTERVAL 7 HOURS) >= DATE(CURRENT_TIMESTAMP() + INTERVAL 7 HOURS - INTERVAL 6 DAYS)
+GROUP BY DATE(order_purchase_timestamp + INTERVAL 7 HOURS)
+ORDER BY ngay_vn ASC
+LIMIT 7
+
+Question: Vẽ biểu đồ doanh thu theo từng tháng / Xu hướng doanh thu 12 tháng (dữ liệu lịch sử)?
+SELECT date_format(o.order_purchase_timestamp, 'yyyy-MM') AS thang, SUM(oi.price) AS monthly_revenue
+FROM olist_order_items oi
+JOIN olist_orders o ON oi.order_id = o.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY date_format(o.order_purchase_timestamp, 'yyyy-MM')
+ORDER BY thang ASC
+LIMIT 30
+
+Question: Số đơn hàng theo từng năm (lịch sử)?
+SELECT year(o.order_purchase_timestamp) AS yr, COUNT(DISTINCT o.order_id) AS total_orders
+FROM olist_orders o
+GROUP BY year(o.order_purchase_timestamp)
+ORDER BY yr ASC
+LIMIT 10
 
 Question: Tổng doanh thu là bao nhiêu?
 SELECT SUM(oi.price) AS total_revenue
@@ -990,3 +1096,168 @@ FROM olist_order_items oi
 GROUP BY oi.order_id
 ORDER BY item_count DESC
 LIMIT 5
+
+=== FEW-SHOT EXAMPLES (Gold Delivery Delay Table) ===
+
+Question: Tỷ lệ giao hàng trễ là bao nhiêu?
+SELECT
+  SUM(g.is_delayed) AS late_deliveries,
+  COUNT(*) AS total_delivered,
+  ROUND(SUM(g.is_delayed) * 100.0 / COUNT(*), 2) AS late_pct
+FROM gold_delivery_delay_features g
+LIMIT 1
+
+Question: Tỷ lệ giao trễ theo từng bang khách hàng?
+SELECT g.customer_state,
+  COUNT(*) AS total_delivered,
+  SUM(g.is_delayed) AS late_deliveries,
+  ROUND(SUM(g.is_delayed) * 100.0 / COUNT(*), 2) AS late_pct
+FROM gold_delivery_delay_features g
+GROUP BY g.customer_state
+ORDER BY late_pct DESC
+LIMIT 30
+
+Question: Thời gian giao hàng trung bình theo bang?
+SELECT g.customer_state,
+  ROUND(AVG(g.delivery_days), 1) AS avg_delivery_days,
+  ROUND(AVG(g.estimated_days), 1) AS avg_estimated_days,
+  ROUND(AVG(g.delay_days), 1) AS avg_delay_days
+FROM gold_delivery_delay_features g
+GROUP BY g.customer_state
+ORDER BY avg_delivery_days DESC
+LIMIT 30
+
+Question: Bang nào có nhiều đơn giao trễ nhất?
+SELECT g.customer_state,
+  SUM(g.is_delayed) AS late_deliveries
+FROM gold_delivery_delay_features g
+GROUP BY g.customer_state
+ORDER BY late_deliveries DESC
+LIMIT 1
+
+Question: Đơn hàng nào bị giao trễ lâu nhất?
+SELECT g.order_id, g.customer_state, g.seller_state,
+  g.delivery_days, g.estimated_days, g.delay_days
+FROM gold_delivery_delay_features g
+WHERE g.is_delayed = 1
+ORDER BY g.delay_days DESC
+LIMIT 1
+
+Question: Phí vận chuyển trung bình của đơn giao trễ so với đơn đúng hạn?
+SELECT
+  CASE WHEN g.is_delayed = 1 THEN 'Giao trễ' ELSE 'Đúng hạn' END AS delivery_status,
+  COUNT(*) AS total_orders,
+  ROUND(AVG(g.total_freight), 2) AS avg_freight,
+  ROUND(AVG(g.avg_item_price), 2) AS avg_price
+FROM gold_delivery_delay_features g
+GROUP BY g.is_delayed
+LIMIT 2
+
+Question: Số đơn giao trễ theo seller_state?
+SELECT g.seller_state,
+  SUM(g.is_delayed) AS late_deliveries,
+  COUNT(*) AS total_delivered,
+  ROUND(SUM(g.is_delayed) * 100.0 / COUNT(*), 2) AS late_pct
+FROM gold_delivery_delay_features g
+GROUP BY g.seller_state
+ORDER BY late_deliveries DESC
+LIMIT 30
+
+Question: Pipeline giao trễ có chạy thành công không? / Trạng thái DQ check?
+SELECT run_id, ingest_ts, row_count, dq_status, invalid_delivery_days, invalid_estimated_days, null_critical_cols
+FROM delivery_delay_dq_log
+ORDER BY ingest_ts DESC
+LIMIT 5
+
+Question: Phân bổ số ngày giao trễ (delay_days > 0) theo nhóm?
+SELECT
+  CASE
+    WHEN g.delay_days BETWEEN 1 AND 5 THEN '1-5 ngày'
+    WHEN g.delay_days BETWEEN 6 AND 15 THEN '6-15 ngày'
+    WHEN g.delay_days BETWEEN 16 AND 30 THEN '16-30 ngày'
+    WHEN g.delay_days > 30 THEN '> 30 ngày'
+  END AS delay_group,
+  COUNT(*) AS total_orders
+FROM gold_delivery_delay_features g
+WHERE g.is_delayed = 1
+GROUP BY delay_group
+ORDER BY total_orders DESC
+LIMIT 10
+
+=== FEW-SHOT EXAMPLES (ML Prediction — Đơn hàng mới) ===
+
+Question: Đơn hàng mới nào có nguy cơ giao trễ cao nhất?
+SELECT order_id, customer_state, estimated_days,
+  predicted_is_delayed,
+  ROUND(delay_probability * 100, 1) AS delay_pct,
+  risk_level
+FROM gold_rt_delivery_predictions
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+ORDER BY delay_probability DESC
+LIMIT 10
+
+Question: Có bao nhiêu đơn hàng mới được dự đoán sẽ giao trễ?
+SELECT
+  SUM(CASE WHEN predicted_is_delayed = 1 THEN 1 ELSE 0 END) AS predicted_late,
+  SUM(CASE WHEN predicted_is_delayed = 0 THEN 1 ELSE 0 END) AS predicted_on_time,
+  COUNT(*) AS total_predictions,
+  ROUND(SUM(CASE WHEN predicted_is_delayed = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS predicted_late_pct
+FROM gold_rt_delivery_predictions
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+LIMIT 10
+
+Question: Phân bổ mức nguy cơ giao trễ của đơn hàng mới?
+SELECT risk_level, COUNT(*) AS total_orders
+FROM gold_rt_delivery_predictions
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+GROUP BY risk_level
+ORDER BY total_orders DESC
+LIMIT 10
+
+Question: Đơn hàng mới ở bang nào có nguy cơ giao trễ cao nhất?
+SELECT customer_state,
+  COUNT(*) AS total_orders,
+  SUM(predicted_is_delayed) AS predicted_late,
+  ROUND(AVG(delay_probability) * 100, 1) AS avg_delay_pct
+FROM gold_rt_delivery_predictions
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+GROUP BY customer_state
+ORDER BY avg_delay_pct DESC
+LIMIT 10
+
+Question: Xác suất giao trễ trung bình của đơn hàng mới hôm nay?
+SELECT
+  ROUND(AVG(delay_probability) * 100, 1) AS avg_delay_pct,
+  ROUND(MIN(delay_probability) * 100, 1) AS min_delay_pct,
+  ROUND(MAX(delay_probability) * 100, 1) AS max_delay_pct,
+  COUNT(*) AS total_predictions
+FROM gold_rt_delivery_predictions
+WHERE prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+LIMIT 10
+
+Question: Đơn hàng mới nào HIGH risk kèm thông tin phí vận chuyển và số sản phẩm?
+SELECT p.order_id, p.customer_state, p.estimated_days,
+  ROUND(p.delay_probability * 100, 1) AS delay_pct,
+  p.risk_level,
+  COUNT(oi.order_item_id) AS item_count,
+  ROUND(SUM(oi.freight_value), 2) AS total_freight,
+  ROUND(AVG(oi.price), 2) AS avg_item_price
+FROM gold_rt_delivery_predictions p
+JOIN bronze_rt_order_items_sim oi ON p.order_id = oi.order_id
+WHERE p.prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+  AND p.risk_level = 'HIGH'
+GROUP BY p.order_id, p.customer_state, p.estimated_days, p.delay_probability, p.risk_level
+ORDER BY p.delay_probability DESC
+LIMIT 10
+
+Question: So sánh xác suất giao trễ dự đoán giữa các bang trong đơn hàng mới?
+SELECT p.customer_state,
+  COUNT(*) AS total_orders,
+  SUM(p.predicted_is_delayed) AS predicted_late,
+  ROUND(AVG(p.delay_probability) * 100, 1) AS avg_delay_pct,
+  SUM(CASE WHEN p.risk_level = 'HIGH' THEN 1 ELSE 0 END) AS high_risk_count
+FROM gold_rt_delivery_predictions p
+WHERE p.prediction_date = (SELECT MAX(prediction_date) FROM gold_rt_delivery_predictions)
+GROUP BY p.customer_state
+ORDER BY avg_delay_pct DESC
+LIMIT 30

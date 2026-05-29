@@ -30,12 +30,45 @@ def _truncate_data_for_nlg(data: list[dict], max_rows: int) -> tuple[list[dict],
     return data[:max_rows], total, True
 
 
+EMPTY_RESULT_SYSTEM = """Bạn là trợ lý phân tích dữ liệu. Truy vấn được chạy thành công nhưng không có kết quả nào (empty result).
+
+Nhiệm vụ:
+- Giải thích ngắn gọn, lịch sự tại sao không có dữ liệu (dựa vào câu hỏi và SQL được cung cấp).
+- Nếu có thể, đề xuất 1-2 câu hỏi thay thế phù hợp để người dùng có thể hỏi tiếp.
+- Giọng lịch sự, ngắn gọn. Tiếng Việt nếu câu hỏi là tiếng Việt.
+- Không nói "lỗi", không đổ lỗi hệ thống. Đây là kết quả hợp lệ (rỗng)."""
+
+
+def _generate_empty_result_answer(question: str, sql: str, llm: Any) -> str:
+    """Gọi LLM sinh giải thích hợp lý khi query empty, kèm gợi ý câu hỏi tiếp theo."""
+    sql_hint = f"\n\nSQL đã chạy:\n{sql}" if sql else ""
+    user_block = (
+        f"Câu hỏi người dùng: {question}{sql_hint}\n\n"
+        "Kết quả trả về: không có dữ liệu nào (empty result).\n"
+        "Hãy giải thích lý do và đề xuất câu hỏi thay thế phù hợp."
+    )
+    messages = [
+        SystemMessage(content=EMPTY_RESULT_SYSTEM.strip()),
+        HumanMessage(content=user_block),
+    ]
+    try:
+        response = llm.invoke(messages)
+        text = (response.content or "").strip()
+        if text:
+            return text
+    except Exception as e:
+        logger.warning("NLG empty result invoke thất bại: %s", e)
+    return "Hiện tại không có dữ liệu phù hợp với yêu cầu này. Bạn có thể thử mở rộng tiêu chí tìm kiếm hoặc đặt câu hỏi khác."
+
+
+
 def generate_natural_language_answer(
     question: str,
     data: list[dict],
     llm: Any,
     *,
     max_rows: int = 80,
+    sql: str = "",
 ) -> str:
     """
     Gửi câu hỏi gốc + mẫu dữ liệu cho LLM để sinh câu trả lời tự nhiên.
@@ -45,9 +78,10 @@ def generate_natural_language_answer(
         data: Kết quả đã parse (list[dict]).
         llm: Chat model LangChain (invoke messages).
         max_rows: Giới hạn số dòng đưa vào prompt để tránh context quá dài.
+        sql: Câu SQL đã thực thi (dùng để giải thích empty result).
     """
     if not data:
-        return "Truy vấn không trả về dữ liệu nào."
+        return _generate_empty_result_answer(question, sql, llm)
 
     slice_rows, total, truncated = _truncate_data_for_nlg(data, max_rows)
     try:

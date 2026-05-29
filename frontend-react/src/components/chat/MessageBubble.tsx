@@ -3,6 +3,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { Message } from '../../types';
 import { formatTimestamp } from '../../utils/helpers';
 import SQLViewer from '../shared/SQLViewer';
@@ -31,17 +33,63 @@ const UserAvatar = () => (
   </div>
 );
 
-const renderMarkdownText = (text: string) => {
-  if (!text) return null;
-  // Tách text dựa trên syntax **bold**
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index} className="font-semibold text-white">{part.slice(2, -2)}</strong>;
-    }
-    return <React.Fragment key={index}>{part}</React.Fragment>;
-  });
-};
+/** Render markdown (bold, tables, lists, etc.) via react-markdown + GFM */
+const MarkdownContent: React.FC<{ text: string }> = ({ text }) => (
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    components={{
+      // Style markdown tables to match dark theme
+      table: ({ children, ...props }) => (
+        <div className="overflow-x-auto my-3 rounded-lg" style={{ border: '1px solid var(--border)' }}>
+          <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }} {...props}>
+            {children}
+          </table>
+        </div>
+      ),
+      thead: ({ children, ...props }) => (
+        <thead style={{ background: 'rgba(255,255,255,0.06)' }} {...props}>{children}</thead>
+      ),
+      th: ({ children, ...props }) => (
+        <th
+          className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider"
+          style={{ color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}
+          {...props}
+        >
+          {children}
+        </th>
+      ),
+      td: ({ children, ...props }) => (
+        <td
+          className="px-3 py-2 text-sm"
+          style={{ color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+          {...props}
+        >
+          {children}
+        </td>
+      ),
+      tr: ({ children, ...props }) => (
+        <tr className="hover:bg-white/5 transition-colors" {...props}>{children}</tr>
+      ),
+      // Bold text
+      strong: ({ children, ...props }) => (
+        <strong className="font-semibold text-white" {...props}>{children}</strong>
+      ),
+      // Paragraphs
+      p: ({ children, ...props }) => (
+        <p className="mb-2 last:mb-0" {...props}>{children}</p>
+      ),
+      // Lists
+      ul: ({ children, ...props }) => (
+        <ul className="list-disc list-inside mb-2 space-y-1" {...props}>{children}</ul>
+      ),
+      ol: ({ children, ...props }) => (
+        <ol className="list-decimal list-inside mb-2 space-y-1" {...props}>{children}</ol>
+      ),
+    }}
+  >
+    {text}
+  </ReactMarkdown>
+);
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const [displayedText, setDisplayedText] = useState(
@@ -137,10 +185,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
             {/* Text — chỉ hiện khi không pending và có nội dung */}
             {message.status !== 'pending' && displayedText && (
-              <p className="whitespace-pre-wrap break-words">
-                {renderMarkdownText(displayedText)}
-                {isTyping && <span className="cursor-blink ml-0.5">▊</span>}
-              </p>
+              <>
+                {isTyping ? (
+                  <div className="whitespace-pre-wrap break-words">
+                    {displayedText}
+                    <span className="cursor-blink ml-0.5">▊</span>
+                  </div>
+                ) : (
+                  <div className="break-words prose-invert">
+                    <MarkdownContent text={displayedText} />
+                  </div>
+                )}
+              </>
             )}
 
             {/* Error */}

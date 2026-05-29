@@ -2,11 +2,14 @@
  * components/chat/ChatWindow.tsx — Responsive
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { useChatStream } from '../../hooks/useChatStream';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
+
+/** Khoảng cách (px) từ đáy để coi là "đang xem tin mới nhất" */
+const NEAR_BOTTOM_PX = 120;
 
 const SUGGESTION_PROMPTS = [
   'Tổng doanh thu từng danh mục?',
@@ -17,17 +20,57 @@ const SUGGESTION_PROMPTS = [
 
 const ChatWindow: React.FC = () => {
   const messages = useChatStore((state) => state.messages);
+  const isLoading = useChatStore((state) => state.isLoading);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
+  const [showScrollDown, setShowScrollDown] = useState(false);
   const { sendMessage } = useChatStream();
 
+  const isNearBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX;
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const near = isNearBottom();
+    stickToBottomRef.current = near;
+    setShowScrollDown(!near);
+  }, [isNearBottom]);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const prevCount = prevMessageCountRef.current;
+    const count = messages.length;
+    prevMessageCountRef.current = count;
+
+    // Tin nhắn mới (user gửi hoặc assistant placeholder) → luôn kéo xuống
+    if (count > prevCount) {
+      stickToBottomRef.current = true;
+    }
+
+    if (stickToBottomRef.current || isNearBottom()) {
+      stickToBottomRef.current = true;
+      setShowScrollDown(false);
+      scrollToBottom(count > prevCount ? 'smooth' : 'auto');
+    } else {
+      setShowScrollDown(true);
+    }
+  }, [messages, isNearBottom, scrollToBottom]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--chat-bg)' }}>
+    <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: 'var(--chat-bg)' }}>
       {/* ── Messages area ── */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={handleScroll}
+      >
         {messages.length === 0 ? (
           <WelcomeScreen onSend={sendMessage} />
         ) : (
@@ -40,11 +83,48 @@ const ChatWindow: React.FC = () => {
         )}
       </div>
 
+      {/* Nút cuộn xuống khi user đang đọc tin cũ */}
+      {showScrollDown && (
+        <ScrollToBottomButton
+          isLoading={isLoading}
+          onClick={() => {
+            stickToBottomRef.current = true;
+            setShowScrollDown(false);
+            scrollToBottom('smooth');
+          }}
+        />
+      )}
+
       {/* ── Input area ── */}
       <ChatInput />
     </div>
   );
 };
+
+interface ScrollToBottomButtonProps {
+  isLoading: boolean;
+  onClick: () => void;
+}
+
+const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({ isLoading, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="absolute left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium shadow-lg transition-all hover:brightness-110"
+    style={{
+      bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+      background: 'var(--chat-surface)',
+      color: 'var(--text-primary)',
+      border: '1px solid var(--input-border)',
+    }}
+    aria-label="Cuộn xuống tin mới nhất"
+  >
+    {isLoading ? 'Đang trả lời…' : 'Tin mới'}
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+);
 
 /* ── Welcome Screen — responsive grid ── */
 interface WelcomeScreenProps {
