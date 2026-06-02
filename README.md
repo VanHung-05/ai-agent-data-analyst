@@ -46,7 +46,8 @@
 
 ### Tổng quan
 
-<img width="2816" height="1536" alt="Gemini_Generated_Image_9e6wjj9e6wjj9e6w" src="https://github.com/user-attachments/assets/50b901c1-f59a-4f15-a709-6b0a6d446b2b" />
+<img width="1536" height="1024" alt="z7891438493927_eb2eb1c3ac96a05ca09d7d80bdc6b268" src="https://github.com/user-attachments/assets/509461b9-e1f0-4758-8d32-ca8f6c51fa43" />
+
 
 
 ### Multi-Agent Pipeline
