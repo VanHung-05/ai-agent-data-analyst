@@ -1,5 +1,6 @@
 services:
   backend:
+    image: nguyenvanhung777/ai-agent-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -19,6 +20,7 @@ services:
       - ai-analyst-net
 
   frontend-react:
+    image: nguyenvanhung777/ai-agent-frontend:latest
     build:
       context: ./frontend-react
       dockerfile: Dockerfile
